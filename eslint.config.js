@@ -20,4 +20,24 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "error",
     },
   },
+  {
+    // src/solver is pure logic: no DOM, OpenCV, Node or other-module imports.
+    files: ["src/solver/**/*.ts"],
+    ignores: ["**/*.test.ts"],
+    rules: {
+      "no-restricted-globals": ["error", "window", "document", "navigator", "localStorage"],
+      "no-restricted-imports": [
+        "error",
+        { patterns: ["../ui/*", "../vision/*", "node:*", "opencv*", "onnxruntime*"] },
+      ],
+    },
+  },
+  {
+    // tools are offline-only and never imported by src.
+    files: ["src/**/*.ts"],
+    ignores: ["src/solver/**"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: ["**/tools/*"] }],
+    },
+  },
 );

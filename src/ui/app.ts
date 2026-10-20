@@ -46,7 +46,7 @@ export function mountApp(root: HTMLElement): void {
   root.innerHTML = `
     <main class="app">
       <h1>Sudoku Solver</h1>
-      <div class="board" role="grid" aria-label="Sudoku grid" tabindex="0"></div>
+      <div class="board" role="group" aria-label="Sudoku grid" tabindex="0"></div>
       <p class="message" role="status" aria-live="polite" data-testid="message"></p>
       <div class="pad" role="group" aria-label="Number pad"></div>
       <div class="actions">
@@ -65,7 +65,7 @@ export function mountApp(root: HTMLElement): void {
     for (let c = 0; c < 9; c++) {
       const el = document.createElement("div");
       el.className = "cell";
-      el.setAttribute("role", "gridcell");
+      el.setAttribute("role", "img");
       el.dataset.row = String(r);
       el.dataset.col = String(c);
       el.setAttribute("aria-label", `Row ${r + 1}, column ${c + 1}`);
@@ -107,7 +107,8 @@ export function mountApp(root: HTMLElement): void {
         el.classList.toggle("conflict", conflicts.has(`${r},${c}`));
         const isSel = selected[0] === r && selected[1] === c;
         el.classList.toggle("selected", isSel);
-        el.setAttribute("aria-selected", String(isSel));
+        if (isSel) el.setAttribute("aria-current", "true");
+        else el.removeAttribute("aria-current");
       }
     }
   }

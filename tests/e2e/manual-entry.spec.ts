@@ -74,7 +74,8 @@ test("editing after solving drops the solution", async ({ page }) => {
   await page.getByRole("button", { name: "Solve" }).click();
   await cell(page, 0).click();
   await page.keyboard.press("Backspace");
-  expect((await page.locator(".cell.solved").count()) === 0).toBe(true);
+  await expect(page.locator(".cell.solved")).toHaveCount(0);
+  await expect(page.getByTestId("message")).toHaveText("");
 });
 
 test("invalid grid shows a message and highlights conflicts", async ({ page }) => {

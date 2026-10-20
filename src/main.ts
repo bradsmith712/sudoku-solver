@@ -1,2 +1,5 @@
+import "./ui/style.css";
+import { mountApp } from "./ui/app";
+
 const app = document.getElementById("app");
-if (app) app.textContent = "Sudoku Photo Solver";
+if (app) mountApp(app);

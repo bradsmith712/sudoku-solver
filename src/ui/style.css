@@ -1,0 +1,157 @@
+:root {
+  --given: #111827;
+  --solved: #2563eb;
+  --line: #9ca3af;
+  --box-line: #111827;
+  --sel: #dbeafe;
+  --bad: #fecaca;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  color: var(--given);
+  background: #f9fafb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app {
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 12px 12px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+h1 {
+  font-size: 1.25rem;
+  margin: 0;
+  text-align: center;
+}
+
+.board {
+  width: 100%;
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  border: 2px solid var(--box-line);
+  background: #fff;
+  touch-action: manipulation;
+  user-select: none;
+  outline: none;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(1rem, 6vw, 1.75rem);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.cell:nth-child(9n) {
+  border-right: 0;
+}
+
+.cell:nth-child(n + 73) {
+  border-bottom: 0;
+}
+
+.cell:nth-child(9n + 3),
+.cell:nth-child(9n + 6) {
+  border-right: 2px solid var(--box-line);
+}
+
+.cell:nth-child(n + 19):nth-child(-n + 27),
+.cell:nth-child(n + 46):nth-child(-n + 54) {
+  border-bottom: 2px solid var(--box-line);
+}
+
+.cell.given {
+  color: var(--given);
+  font-weight: 700;
+}
+
+.cell.solved {
+  color: var(--solved);
+}
+
+.cell.conflict {
+  background: var(--bad);
+}
+
+.board:focus-visible,
+.cell.selected {
+  background: var(--sel);
+}
+
+.cell.selected.conflict {
+  background: var(--bad);
+  outline: 2px solid var(--solved);
+  outline-offset: -2px;
+}
+
+.message {
+  min-height: 3em;
+  margin: 0;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.message[data-kind="error"] {
+  color: #b91c1c;
+}
+
+.message[data-kind="warning"] {
+  color: #b45309;
+}
+
+.message[data-kind="success"] {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.pad {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+button {
+  font: inherit;
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+}
+
+button:active {
+  background: var(--sel);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+button.primary {
+  background: var(--solved);
+  border-color: var(--solved);
+  color: #fff;
+  font-weight: 600;
+}

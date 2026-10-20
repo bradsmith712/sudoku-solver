@@ -26,9 +26,9 @@ Done when: all solver tests pass and the benchmark is met.
 
 ## Phase 2: Manual-entry UI
 
-- [ ] Build a 9x9 editable grid with keyboard and tap input, mobile-friendly
-- [ ] Add Solve and Clear buttons, displaying solved digits in a different color from givens
-- [ ] Show clear messages for invalid, unsolvable, and multiple-solution results
+- [x] Build a 9x9 editable grid with keyboard and tap input, mobile-friendly
+- [x] Add Solve and Clear buttons, displaying solved digits in a different color from givens
+- [x] Show clear messages for invalid, unsolvable, and multiple-solution results
 - [ ] Add a Playwright test: enter a puzzle, solve, verify the displayed solution is valid
 - [ ] Screenshot the app at phone width and fix any layout issues
 

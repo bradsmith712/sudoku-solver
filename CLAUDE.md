@@ -36,6 +36,10 @@ Client-side web app: photo of a sudoku in, solved grid out. Full requirements ar
 - For visual or camera work, verify in a browser (screenshot or Playwright), not just unit tests.
 - Ask before deleting files outside the task, rewriting history, or changing the deploy config.
 
+## Design reference
+
+- `docs/mockups.png` is the visual reference for the UI. Look at it before any UI work (Phase 2 and Phase 6) and note deviations in the commit message.
+
 ## Conventions
 
 - TypeScript strict mode, no `any` without a comment explaining why.

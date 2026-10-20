@@ -4,6 +4,10 @@
 
 A web app that runs entirely in the browser. The user takes or uploads a photo of a sudoku puzzle, and the app reads the grid, lets them fix any misread digits, solves it, and shows the solution overlaid on the puzzle. No backend, no API keys, no per-request cost. Hosted free at a public URL, installable on a phone as a PWA.
 
+## Design
+
+Visual reference for the UI: `docs/mockups.png`. Layout and flow should follow it; where it conflicts with the written requirements in this file, this file wins.
+
 ## Non-goals
 
 - No accounts, database, or server code.

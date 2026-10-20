@@ -18,7 +18,7 @@ Done when: `npm run check` passes on an empty project and CI is green.
 - [x] Implement `solve(grid)` with constraint propagation and backtracking
 - [x] Detect invalid grids (duplicates in a row, column, or box)
 - [x] Detect unsolvable puzzles and puzzles with multiple solutions (stop at 2)
-- [ ] Build at least 50 fixtures: easy, medium, hard, invalid, unsolvable, multi-solution
+- [x] Build at least 50 fixtures: easy, medium, hard, invalid, unsolvable, multi-solution
 - [ ] Add a property check: every returned solution has valid rows, columns, and boxes and preserves the givens
 - [ ] Benchmark: the hardest fixture solves in under 100 ms
 

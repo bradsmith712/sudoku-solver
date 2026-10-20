@@ -8,7 +8,7 @@ Work top to bottom, one task at a time. For each task: implement, run `npm run c
 - [x] Add scripts: `dev`, `test`, `test:e2e`, `lint`, `typecheck`, `build`, `check`
 - [x] Create `src/types.ts` with the `Grid` and `ScanResult` types from `SPEC.md`
 - [x] Add a GitHub Actions workflow that runs `npm run check` on every push
-- [ ] Add a Claude Code PostToolUse hook that runs the formatter after file edits, and a Stop hook that runs `npm test` (`.claude/settings.json`)
+- [x] Add a Claude Code PostToolUse hook that runs the formatter after file edits, and a Stop hook that runs `npm test` (`.claude/settings.json`)
 - [ ] Create a read-only `reviewer` subagent (`.claude/agents/reviewer.md`) with a checklist: correctness, tests, memory leaks, bundle size, spec drift
 
 Done when: `npm run check` passes on an empty project and CI is green.

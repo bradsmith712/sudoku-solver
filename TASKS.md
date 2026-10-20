@@ -29,7 +29,7 @@ Done when: all solver tests pass and the benchmark is met.
 - [x] Build a 9x9 editable grid with keyboard and tap input, mobile-friendly
 - [x] Add Solve and Clear buttons, displaying solved digits in a different color from givens
 - [x] Show clear messages for invalid, unsolvable, and multiple-solution results
-- [ ] Add a Playwright test: enter a puzzle, solve, verify the displayed solution is valid
+- [x] Add a Playwright test: enter a puzzle, solve, verify the displayed solution is valid
 - [ ] Screenshot the app at phone width and fix any layout issues
 
 Done when: a puzzle can be entered and solved entirely by hand in the browser.

@@ -19,8 +19,8 @@ Done when: `npm run check` passes on an empty project and CI is green.
 - [x] Detect invalid grids (duplicates in a row, column, or box)
 - [x] Detect unsolvable puzzles and puzzles with multiple solutions (stop at 2)
 - [x] Build at least 50 fixtures: easy, medium, hard, invalid, unsolvable, multi-solution
-- [ ] Add a property check: every returned solution has valid rows, columns, and boxes and preserves the givens
-- [ ] Benchmark: the hardest fixture solves in under 100 ms
+- [x] Add a property check: every returned solution has valid rows, columns, and boxes and preserves the givens
+- [x] Benchmark: the hardest fixture solves in under 100 ms
 
 Done when: all solver tests pass and the benchmark is met.
 

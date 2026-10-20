@@ -1,15 +1,18 @@
 # SPEC: Sudoku Photo Solver
 
 ## Goal
+
 A web app that runs entirely in the browser. The user takes or uploads a photo of a sudoku puzzle, and the app reads the grid, lets them fix any misread digits, solves it, and shows the solution overlaid on the puzzle. No backend, no API keys, no per-request cost. Hosted free at a public URL, installable on a phone as a PWA.
 
 ## Non-goals
+
 - No accounts, database, or server code.
 - No handwriting recognition in v1 (printed puzzles only).
 - No variants (killer, samurai, etc.).
 - No paid APIs. Claude or other LLM vision is out of scope for the default pipeline.
 
 ## Stack
+
 - TypeScript, Vite, plain DOM or a light framework (Preact or vanilla; keep the bundle small)
 - OpenCV.js for board detection and perspective correction
 - A small digit classifier (CNN) exported to ONNX and run with onnxruntime-web
@@ -19,6 +22,7 @@ A web app that runs entirely in the browser. The user takes or uploads a photo o
 - Offline tooling (not shipped): Python script that generates synthetic training digits from fonts, trains the classifier with PyTorch, and exports ONNX
 
 ## Shared contract
+
 ```ts
 type Grid = number[][];            // 9x9, 0 = blank, 1-9 = digit
 type ScanResult = {
@@ -30,9 +34,11 @@ type ScanResult = {
 solve(grid: Grid): { status: "solved" | "invalid" | "unsolvable" | "multiple"; solution?: Grid }
 scan(image: ImageData): Promise<ScanResult>   // throws ScanError("no_board_found") if detection fails
 ```
+
 Modules are independent and communicate only through these types: `src/solver`, `src/vision`, `src/ui`.
 
 ## Features
+
 1. **Solver:** constraint propagation plus backtracking. Detects invalid input (duplicate in a row, column, or box), unsolvable puzzles, and puzzles with multiple solutions (stop counting at 2).
 2. **Manual entry:** a 9x9 editable grid works without any camera or vision code.
 3. **Board detection:** find the largest quadrilateral contour, order its corners, apply a perspective transform to a square board image.
@@ -45,12 +51,14 @@ Modules are independent and communicate only through these types: `src/solver`, 
 10. **Errors:** friendly messages for no board found, invalid grid after scan, and unsolvable puzzle, each with a retry path.
 
 ## Performance and size
+
 - Scan to review screen in under 3 seconds on a mid-range phone for a 1024px image.
 - Lazy-load OpenCV.js and the model only when the user first scans. The manual-entry path must work instantly.
 - Self-host OpenCV.js and the model file (no runtime dependency on a third-party CDN).
 - Solving any valid puzzle takes under 100 ms.
 
 ## Done criteria (all must pass)
+
 - `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` all succeed.
 - Solver passes a fixture set of at least 50 puzzles (easy through hard, plus invalid, unsolvable, and multi-solution cases).
 - Vision accuracy on the synthetic test set (at least 200 generated images with perspective, rotation, blur, noise, and lighting variation): at least 98% of cells correct and at least 90% of full boards read perfectly.
@@ -60,12 +68,14 @@ Modules are independent and communicate only through these types: `src/solver`, 
 - README with a demo GIF, architecture diagram, accuracy table, and the "why client-side" reasoning.
 
 ## Risks and decisions
+
 - **Misread digits are the main failure.** The review screen and confidence highlighting are mandatory, not optional.
 - **OpenCV.js is large.** Lazy loading and caching keep first paint fast.
 - **Real photos vs. synthetic data.** The model is trained on synthetic digits; measure on real photos early (Phase 5) and add augmentation or real samples if accuracy lags.
 - **Multiple fonts and newspaper-style puzzles** vary a lot. Start with clean printed puzzles and expand.
 
 ## Stretch goals
+
 - Overlay the solution on the original photo with the homography.
 - Handwritten digits (train on a handwriting set and compare).
 - Optional Claude vision fallback behind a rate-limited proxy, with an accuracy comparison in the README. Not part of the default build.

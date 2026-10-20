@@ -3,6 +3,7 @@
 Client-side web app: photo of a sudoku in, solved grid out. Full requirements are in `SPEC.md`. Work items are in `TASKS.md`.
 
 ## Commands
+
 - `npm run dev`: start Vite dev server
 - `npm test`: Vitest unit tests
 - `npm run test:e2e`: Playwright end-to-end tests
@@ -14,6 +15,7 @@ Client-side web app: photo of a sudoku in, solved grid out. Full requirements ar
 - `python tools/train/train.py`: regenerate and train the digit model (offline only)
 
 ## Architecture
+
 - `src/solver`: pure logic, no DOM, no OpenCV
 - `src/vision`: OpenCV.js and ONNX code, depends only on the `Grid` and `ScanResult` types in `src/types.ts`
 - `src/ui`: DOM and PWA code, calls `scan()` and `solve()` through the contract in `SPEC.md`
@@ -21,6 +23,7 @@ Client-side web app: photo of a sudoku in, solved grid out. Full requirements ar
 - `tools`: offline scripts (image generator, model training); never imported by `src`
 
 ## Rules
+
 - Never commit with failing checks. Run `npm run check` first.
 - After any change to code, run the relevant tests and fix failures before stopping.
 - Do not change the types in `src/types.ts` without updating `SPEC.md` and every module that uses them.
@@ -34,10 +37,12 @@ Client-side web app: photo of a sudoku in, solved grid out. Full requirements ar
 - Ask before deleting files outside the task, rewriting history, or changing the deploy config.
 
 ## Conventions
+
 - TypeScript strict mode, no `any` without a comment explaining why.
 - Pure functions where possible; side effects live at the edges.
 - Test file next to the code it tests (`solver.ts`, `solver.test.ts`) except fixtures and e2e.
 - Name test fixtures descriptively (`easy-01.json`, `skewed-30deg.png`).
 
 ## When you make the same mistake twice
+
 Add a line to this file or propose a hook or skill so it does not happen a third time.

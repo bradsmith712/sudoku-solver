@@ -1,0 +1,7 @@
+node_modules
+dist
+playwright-report
+test-results
+.DS_Store
+tests/fixtures/synthetic/*
+!tests/fixtures/synthetic/sample/

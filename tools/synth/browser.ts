@@ -4,7 +4,7 @@
  * Functions passed to page.evaluate are serialized, so they must be self-contained.
  */
 import { chromium, type Browser, type Page } from "@playwright/test";
-import type { BoardSpec } from "./render";
+import type { BoardSpec, SceneSpec } from "./render";
 
 export type Rgba = { width: number; height: number; data: Uint8ClampedArray };
 
@@ -98,6 +98,16 @@ export class Renderer {
           ctx.fillText(String(v), x, y);
         }
 
+      if (s.caption) {
+        const cp = s.caption;
+        ctx.font = `${cp.size}px ${cp.font}`;
+        ctx.fillStyle = st.ink;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(cp.header, dim / 2, s.margin / 2);
+        ctx.fillText(cp.footer, dim / 2, dim - s.margin / 2);
+      }
+
       const bytes = ctx.getImageData(0, 0, dim, dim).data;
       let bin = "";
       for (let i = 0; i < bytes.length; i += 0x8000)
@@ -106,6 +116,68 @@ export class Renderer {
     }, spec);
     const dim = spec.size + 2 * spec.margin;
     return fromBase64(dim, dim, b64);
+  }
+
+  /** Render a background surface with optional clutter (text, shapes, pen strokes). */
+  async scene(spec: SceneSpec): Promise<Rgba> {
+    const b64 = await this.page.evaluate(async (s) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = s.width;
+      canvas.height = s.height;
+      const ctx = canvas.getContext("2d")!;
+      const g = ctx.createLinearGradient(0, 0, s.width, s.height);
+      g.addColorStop(0, s.surface[0]);
+      g.addColorStop(1, s.surface[1]);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, s.width, s.height);
+      // Wood-grain / fabric streaks.
+      for (const st of s.streaks) {
+        ctx.strokeStyle = st.color;
+        ctx.lineWidth = st.width;
+        ctx.beginPath();
+        ctx.moveTo(-10, st.y);
+        ctx.bezierCurveTo(
+          s.width / 3,
+          st.y + st.wave,
+          (2 * s.width) / 3,
+          st.y - st.wave,
+          s.width + 10,
+          st.y,
+        );
+        ctx.stroke();
+      }
+      for (const it of s.items) {
+        ctx.save();
+        ctx.translate(it.x, it.y);
+        ctx.rotate(it.angle);
+        ctx.fillStyle = ctx.strokeStyle = it.color;
+        ctx.lineWidth = it.lineWidth;
+        if (it.kind === "text") {
+          ctx.font = `${it.size}px ${it.font}`;
+          it.lines.forEach((line, k) => ctx.fillText(line, 0, k * it.size * 1.3));
+        } else if (it.kind === "rect") {
+          if (it.fill) ctx.fillRect(0, 0, it.w, it.h);
+          else ctx.strokeRect(0, 0, it.w, it.h);
+        } else if (it.kind === "ellipse") {
+          ctx.beginPath();
+          ctx.ellipse(0, 0, it.w / 2, it.h / 2, 0, 0, 2 * Math.PI);
+          if (it.fill) ctx.fill();
+          else ctx.stroke();
+        } else if (it.kind === "stroke") {
+          ctx.beginPath();
+          ctx.moveTo(it.points[0][0], it.points[0][1]);
+          for (const [px, py] of it.points.slice(1)) ctx.lineTo(px, py);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      const bytes = ctx.getImageData(0, 0, s.width, s.height).data;
+      let bin = "";
+      for (let i = 0; i < bytes.length; i += 0x8000)
+        bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      return btoa(bin);
+    }, spec);
+    return fromBase64(spec.width, spec.height, b64);
   }
 
   /** Encode RGBA pixels as JPEG (quality 0-1). */

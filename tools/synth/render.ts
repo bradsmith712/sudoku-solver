@@ -60,6 +60,7 @@ export type BoardSpec = {
   style: BoardStyle;
   /** 81 per-cell digit offsets as fractions of the cell size. */
   jitter: [number, number][];
+  caption?: Caption | null;
 };
 
 type Rand = () => number;
@@ -116,4 +117,114 @@ export function boardCorners(spec: BoardSpec): [number, number][] {
     [b, b],
     [a, b],
   ];
+}
+
+/** Newspaper-style text printed on the paper around the puzzle. */
+export type Caption = { header: string; footer: string; size: number; font: string };
+
+const WORDS =
+  "the of and to in is for on with by at from puzzle daily times weekly answers page edition crossword across down solution difficulty moderate tough gentle fill every row column box digits".split(
+    " ",
+  );
+
+/** Header/footer text for the paper margin, or null if the margin is too small. */
+export function sampleCaption(r: Rand, spec: BoardSpec): Caption | null {
+  const size = Math.round(spec.margin * uniform(r, 0.3, 0.5));
+  if (size < 9) return null;
+  const n = 1 + Math.floor(r() * 400);
+  return {
+    header: pick(r, [
+      `SUDOKU No. ${n}`,
+      `Sudoku ${n}`,
+      `DAILY SUDOKU`,
+      `Sudoku — ${pick(r, ["Easy", "Medium", "Hard"])}`,
+    ]),
+    footer: pick(r, ["Fill every row, column and box with 1-9", `Solution on page ${n % 40}`, ""]),
+    size,
+    font: pick(r, ["Georgia", "Helvetica", "Times New Roman", "serif", "sans-serif"]),
+  };
+}
+
+type TextItem = { kind: "text"; size: number; font: string; lines: string[] };
+type ShapeItem = { kind: "rect" | "ellipse"; w: number; h: number; fill: boolean };
+type StrokeItem = { kind: "stroke"; points: [number, number][] };
+export type SceneItem = (TextItem | ShapeItem | StrokeItem) & {
+  x: number;
+  y: number;
+  angle: number;
+  color: string;
+  lineWidth: number;
+};
+
+export type SceneSpec = {
+  width: number;
+  height: number;
+  /** Surface gradient endpoints. */
+  surface: [string, string];
+  /** Long faint curves across the surface (wood grain, fabric folds). */
+  streaks: { y: number; wave: number; width: number; color: string }[];
+  items: SceneItem[];
+};
+
+const SURFACES: { name: string; colors: [string, string]; streak: string | null }[] = [
+  { name: "wood", colors: ["#9a6a3c", "#7c5230"], streak: "rgba(60, 35, 15, 0.25)" },
+  { name: "light-wood", colors: ["#d2b48c", "#c09a6b"], streak: "rgba(120, 80, 40, 0.2)" },
+  { name: "gray-desk", colors: ["#8d8f94", "#6f7176"], streak: null },
+  { name: "white-desk", colors: ["#e6e6e3", "#cfcfcb"], streak: null },
+  { name: "dark", colors: ["#2d2e33", "#45464d"], streak: null },
+  { name: "cutting-mat", colors: ["#2f6b4f", "#245740"], streak: null },
+  { name: "fabric", colors: ["#3c5a85", "#2f496d"], streak: "rgba(0, 0, 0, 0.12)" },
+];
+
+/** Background surface with `clutter` random objects (text, shapes, pen strokes). */
+export function sampleScene(r: Rand, width: number, height: number, clutter: number) {
+  const surface = pick(r, SURFACES);
+  const streaks = surface.streak
+    ? Array.from({ length: 8 + Math.floor(r() * 20) }, () => ({
+        y: Math.round(uniform(r, 0, height)),
+        wave: Math.round(uniform(r, -40, 40)),
+        width: round(uniform(r, 1, 6), 1),
+        color: surface.streak!,
+      }))
+    : [];
+  const colors = ["#111", "#333", "#777", "#c22", "#225", "#ddd", "#fff", "#e8d36a", "#3a7"];
+  const items: SceneItem[] = Array.from({ length: clutter }, () => {
+    const base = {
+      x: Math.round(uniform(r, -50, width)),
+      y: Math.round(uniform(r, -50, height)),
+      angle: round(uniform(r, -Math.PI, Math.PI)),
+      color: pick(r, colors),
+      lineWidth: round(uniform(r, 1, 8), 1),
+    };
+    const kind = pick(r, ["text", "text", "rect", "ellipse", "stroke"] as const);
+    if (kind === "text") {
+      const lines = Array.from({ length: 1 + Math.floor(r() * 8) }, () =>
+        Array.from({ length: 3 + Math.floor(r() * 6) }, () =>
+          r() < 0.15 ? String(Math.floor(r() * 1000)) : pick(r, WORDS),
+        ).join(" "),
+      );
+      const size = Math.round(uniform(r, 10, 40));
+      return { ...base, kind, size, font: pick(r, ["serif", "sans-serif", "monospace"]), lines };
+    }
+    if (kind === "stroke") {
+      const points: [number, number][] = [[0, 0]];
+      for (let k = 0; k < 2 + Math.floor(r() * 6); k++) {
+        const [px, py] = points[points.length - 1];
+        points.push([
+          Math.round(px + uniform(r, -120, 120)),
+          Math.round(py + uniform(r, -120, 120)),
+        ]);
+      }
+      return { ...base, kind, points };
+    }
+    return {
+      ...base,
+      kind,
+      w: Math.round(uniform(r, 30, 400)),
+      h: Math.round(uniform(r, 20, 300)),
+      fill: r() < 0.5,
+    };
+  });
+  const spec: SceneSpec = { width, height, surface: surface.colors, streaks, items };
+  return { spec, surface: surface.name };
 }

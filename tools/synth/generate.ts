@@ -11,9 +11,29 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { solve } from "../../src/solver/solver";
 import { dig, randomSolution, rng } from "../lib/puzzles";
+import {
+  addNoise,
+  applyLighting,
+  gaussianBlur,
+  homography,
+  poseQuad,
+  project,
+  sampleAugment,
+  warpOnto,
+  type Pose,
+} from "./augment";
 import { Renderer } from "./browser";
-import { FONT_CANDIDATES, boardCorners, boardSpec, uniform } from "./render";
-import type { Truth } from "./truth";
+import {
+  FONT_CANDIDATES,
+  boardCorners,
+  boardSpec,
+  pick,
+  sampleCaption,
+  sampleScene,
+  uniform,
+  type BoardSpec,
+} from "./render";
+import type { Point, Truth } from "./truth";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 const { values: args } = parseArgs({
@@ -26,6 +46,59 @@ const { values: args } = parseArgs({
 const count = Number(args.count);
 const baseSeed = Number(args.seed);
 const out = resolve(ROOT, args.out!);
+
+/** Output sizes (width, height): roughly what the app sees after resizing to ~1024px. */
+const SIZES: [number, number][] = [
+  [1024, 768],
+  [768, 1024],
+  [960, 720],
+  [720, 960],
+  [800, 800],
+];
+const round = (x: number) => Math.round(x * 100) / 100;
+const square = (dim: number): Point[] => [
+  [0, 0],
+  [dim, 0],
+  [dim, dim],
+  [0, dim],
+];
+
+/**
+ * Photograph the paper with the sampled pose: project its corners, scale so the board edge is
+ * about `boardOut` px, and place it at a random spot where the whole board stays in frame
+ * (the paper may be cut off). Returns paper and board quads in image pixels.
+ */
+function place(
+  r: () => number,
+  spec: BoardSpec,
+  pose: Pose,
+  boardOut: number,
+  width: number,
+  height: number,
+) {
+  const dim = spec.size + 2 * spec.margin;
+  const norm = (pts: Point[]) => pts.map(([x, y]): Point => [x / dim - 0.5, y / dim - 0.5]);
+  const paper = poseQuad(pose, norm(square(dim)));
+  const board = poseQuad(pose, norm(boardCorners(spec)));
+  const edge = (q: Point[]) =>
+    q.reduce(
+      (acc, [x, y], k) => acc + Math.hypot(x - q[(k + 1) % 4][0], y - q[(k + 1) % 4][1]),
+      0,
+    ) / 4;
+  const pad = 0.03 * Math.min(width, height);
+  for (let scale = boardOut / edge(board); ; scale *= 0.95) {
+    const xs = board.map((p) => p[0] * scale);
+    const ys = board.map((p) => p[1] * scale);
+    const [minX, minY] = [Math.min(...xs), Math.min(...ys)];
+    const slackX = width - 2 * pad - (Math.max(...xs) - minX);
+    const slackY = height - 2 * pad - (Math.max(...ys) - minY);
+    if (slackX < 0 || slackY < 0) continue;
+    const ox = pad - minX + uniform(r, 0, slackX);
+    const oy = pad - minY + uniform(r, 0, slackY);
+    const to = (q: Point[]) => q.map(([x, y]): Point => [x * scale + ox, y * scale + oy]);
+    return { paperQuad: to(paper), boardQuad: to(board) };
+  }
+}
 
 const renderer = await Renderer.launch();
 try {
@@ -45,23 +118,51 @@ try {
     const grid = dig(solution, Math.round(uniform(r, 24, 40)), r);
     if (solve(grid).status !== "solved") throw new Error(`image ${i}: puzzle not unique`);
 
-    const font = fonts[(i - 1) % fonts.length];
-    const spec = boardSpec(r, grid, font, Math.round(uniform(r, 380, 720)));
-    const img = await renderer.board(spec);
+    // Every 20th image (starting with the first) is clean, as a baseline.
+    const aug = sampleAugment(r, i % 20 === 1);
+    const [width, height] = pick(r, SIZES);
+    const boardOut = Math.min(width, height) * aug.boardFrac;
 
-    const name = `synth-${String(i).padStart(4, "0")}-clean`;
+    const font = fonts[(i - 1) % fonts.length];
+    const spec = boardSpec(r, grid, font, Math.round(boardOut * uniform(r, 1, 1.25)));
+    if (aug.clutter > 0 && r() < 0.6) spec.caption = sampleCaption(r, spec);
+    const scene = sampleScene(r, width, height, aug.clutter);
+
+    const { paperQuad, boardQuad } = place(r, spec, aug.pose, boardOut, width, height);
+    const H = homography(square(spec.size + 2 * spec.margin), paperQuad);
+    // Self-check: the homography must agree with the camera model on the board corners.
+    const corners = boardCorners(spec).map((p) => project(H, p));
+    corners.forEach(([x, y], k) => {
+      if (Math.hypot(x - boardQuad[k][0], y - boardQuad[k][1]) > 0.01)
+        throw new Error(`image ${i}: homography disagrees with camera model`);
+    });
+
+    const img = await renderer.scene(scene.spec);
+    warpOnto(img, await renderer.board(spec), H);
+    if (aug.lighting) applyLighting(img, aug.lighting);
+    gaussianBlur(img, aug.blurSigma);
+    addNoise(img, aug.noiseSigma, r);
+
+    const name = `synth-${String(i).padStart(4, "0")}-${aug.tags.join("-")}`;
+    const { tags, ...augment } = aug;
     const truth: Truth = {
       image: `${name}.jpg`,
-      width: img.width,
-      height: img.height,
+      width,
+      height,
       grid,
       solution,
-      corners: boardCorners(spec),
+      corners: corners.map(([x, y]): Point => [round(x), round(y)]),
       seed,
-      tags: ["clean"],
-      render: { ...spec.style, size: spec.size, margin: spec.margin },
+      tags,
+      render: {
+        ...spec.style,
+        size: spec.size,
+        margin: spec.margin,
+        caption: spec.caption ?? null,
+      },
+      augment: { ...augment, surface: scene.surface },
     };
-    writeFileSync(join(out, truth.image), await renderer.jpeg(img, 0.92));
+    writeFileSync(join(out, truth.image), await renderer.jpeg(img, aug.jpegQuality));
     writeFileSync(join(out, `${name}.json`), JSON.stringify(truth) + "\n");
   }
   console.log(`wrote ${count} images to ${out}`);

@@ -41,6 +41,7 @@ Done when: a puzzle can be entered and solved entirely by hand in the browser.
 - [ ] Generate at least 200 labeled images into `tests/fixtures/synthetic/` with ground-truth grids as JSON
 - [ ] Commit a small sample (about 20) and ignore the rest in git; document how to regenerate
 - [ ] Add 10 or more real photos of printed puzzles supplied by the owner to `tests/fixtures/real/` with ground-truth JSON
+- [ ] Owner: supply 390px mobile mockups for all eight screens as `docs/mockups-mobile.png`, with extra attention to screens 2, 4, 5 and 8 (needed before Phase 6)
 
 Done when: the fixture set exists and a script can list image and ground-truth pairs.
 
@@ -70,8 +71,13 @@ Done when: `eval:vision` meets the thresholds in `SPEC.md`.
 
 ## Phase 6: Integration and review screen
 
+- [ ] Before building screens, check `docs/mockups.png` and the owner's 390px mobile mockups (`docs/mockups-mobile.png`) if present; follow the Design section of `SPEC.md`
+- [ ] Refactor the Phase 2 grid into a shared `SudokuGrid` component with a `mode` prop (editable, highlight, read-only); reuse it for review, manual entry and the solution view; keep the Phase 2 e2e tests passing
+- [ ] Add responsive layout: single column under 640px, larger board at 640-1023px, two columns from 1024px; verify with Playwright screenshots at 390px, 768px and 1280px
 - [ ] Implement `scan(image)` combining detection, extraction, and recognition into a `ScanResult`
 - [ ] Add camera and upload input (`accept="image/*"` and `capture="environment"`), resizing to a max of about 1024px
+- [ ] Camera-first import screen: full-screen camera view with corner overlay and large shutter button, switch to photo library, Manual Entry as a secondary option, fallback to the file input if camera access fails; advance automatically to detection after capture
+- [ ] Detection screen with draggable crop corners and adjustment controls. This needs corners exposed from `src/vision`; if it requires a `src/types.ts` change, update `SPEC.md` and all users of the types, and tell the owner
 - [ ] Build the review screen: show the recognized grid, highlight cells under 0.9 confidence, tap to edit
 - [ ] Wire review to solve to solution view, with the solution drawn over the warped board
 - [ ] Add friendly error states and retry for no board found, invalid grid, and unsolvable puzzle
@@ -101,7 +107,8 @@ Done when: the public HTTPS URL works on a phone and can be installed to the hom
 
 - [ ] Project the solution onto the original photo with the inverse homography
 - [ ] Handwritten digit support with accuracy comparison
-- [ ] Step-by-step hint mode
+- [ ] Step-by-step hint mode with the solving activity log, Solved screen (View steps, Solve another) and a step-by-step screen: board above an explanation card, sticky Previous/Next controls
+- [ ] Landing page with a single-column mobile hero, prominent Scan button and Sudoku preview
 - [ ] Optional Claude vision fallback via a rate-limited proxy, compared against the local pipeline in the README
 
 ## Intervention log (fill in as you go)

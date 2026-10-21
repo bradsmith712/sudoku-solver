@@ -48,7 +48,7 @@ Done when: the fixture set exists and a script can list image and ground-truth p
 ## Phase 4: Board detection
 
 - [x] Load OpenCV.js lazily and verify it initializes in the browser and in tests
-- [ ] Implement preprocessing: grayscale, blur, adaptive threshold
+- [x] Implement preprocessing: grayscale, blur, adaptive threshold
 - [ ] Find the largest quadrilateral contour and order its four corners
 - [ ] Apply a perspective transform to a 450x450 top-down board image
 - [ ] Throw `ScanError("no_board_found")` when no valid board is detected

@@ -1,12 +1,14 @@
 /**
  * Synthetic sudoku photo generator (offline). See tools/synth/README.md.
  *
- *   npx vite-node tools/synth/generate.ts [--count 240] [--out tests/fixtures/synthetic] [--seed 3]
+ *   npx vite-node tools/synth/generate.ts [--count 240] [--sample 20] [--seed 3]
+ *                                         [--out tests/fixtures/synthetic]
  *
- * Writes <name>.jpg + <name>.json (see truth.ts) per image. Labels are deterministic for a
+ * Writes <name>.jpg + <name>.json (see truth.ts) per image, then copies the first --sample
+ * pairs into <out>/sample/ (the only part committed to git). Labels are deterministic for a
  * given seed; pixels also depend on the fonts installed on the machine.
  */
-import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { solve } from "../../src/solver/solver";
@@ -39,6 +41,7 @@ const ROOT = new URL("../../", import.meta.url).pathname;
 const { values: args } = parseArgs({
   options: {
     count: { type: "string", default: "240" },
+    sample: { type: "string", default: "20" },
     out: { type: "string", default: "tests/fixtures/synthetic" },
     seed: { type: "string", default: "3" },
   },
@@ -46,6 +49,8 @@ const { values: args } = parseArgs({
 const count = Number(args.count);
 const baseSeed = Number(args.seed);
 const out = resolve(ROOT, args.out!);
+const sampleDir = join(out, "sample");
+const sampleCount = Math.min(Number(args.sample), count);
 
 /** Output sizes (width, height): roughly what the app sees after resizing to ~1024px. */
 const SIZES: [number, number][] = [
@@ -107,8 +112,11 @@ try {
     throw new Error(`only ${fonts.length} fonts available (${fonts.join(", ")}); install more`);
   console.log(`fonts: ${fonts.join(", ")}`);
 
-  mkdirSync(out, { recursive: true });
-  for (const f of readdirSync(out)) if (/^synth-\d+.*\.(jpg|json)$/.test(f)) rmSync(join(out, f));
+  const ours = (f: string) => /^synth-\d+.*\.(jpg|json)$/.test(f);
+  for (const dir of [out, sampleDir]) {
+    mkdirSync(dir, { recursive: true });
+    for (const f of readdirSync(dir)) if (ours(f)) rmSync(join(dir, f));
+  }
 
   for (let i = 1; i <= count; i++) {
     // One PRNG per image, so image i is the same whatever --count is.
@@ -164,8 +172,10 @@ try {
     };
     writeFileSync(join(out, truth.image), await renderer.jpeg(img, aug.jpegQuality));
     writeFileSync(join(out, `${name}.json`), JSON.stringify(truth) + "\n");
+    if (i <= sampleCount)
+      for (const f of [truth.image, `${name}.json`]) copyFileSync(join(out, f), join(sampleDir, f));
   }
-  console.log(`wrote ${count} images to ${out}`);
+  console.log(`wrote ${count} images to ${out} (${sampleCount} copied to ${sampleDir})`);
 } finally {
   await renderer.close();
 }

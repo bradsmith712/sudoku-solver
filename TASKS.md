@@ -39,7 +39,7 @@ Done when: a puzzle can be entered and solved entirely by hand in the browser.
 - [x] Write a script that renders a puzzle grid image using multiple fonts and line weights
 - [x] Add augmentations: perspective warp, rotation, blur, noise, uneven lighting, background clutter
 - [x] Generate at least 200 labeled images into `tests/fixtures/synthetic/` with ground-truth grids as JSON
-- [ ] Commit a small sample (about 20) and ignore the rest in git; document how to regenerate
+- [x] Commit a small sample (about 20) and ignore the rest in git; document how to regenerate
 - [ ] Add 10 or more real photos of printed puzzles supplied by the owner to `tests/fixtures/real/` with ground-truth JSON
 - [ ] Owner: supply 390px mobile mockups for all eight screens as `docs/mockups-mobile.png`, with extra attention to screens 2, 4, 5 and 8 (needed before Phase 6)
 

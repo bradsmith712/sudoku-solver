@@ -44,7 +44,16 @@ function checkSynthetic(p: Pair) {
 }
 
 describe("synthetic image fixtures", () => {
+  const sample = listPairs(join(HERE, "synthetic/sample"));
   const full = listPairs(join(HERE, "synthetic"));
+
+  it("has a committed sample", () => {
+    expect(sample.length).toBeGreaterThanOrEqual(18);
+  });
+
+  it.each(sample.map((p) => [p.name, p] as const))("sample %s is a valid labeled image", (_, p) =>
+    checkSynthetic(p),
+  );
 
   // The full set is generated locally and git-ignored; skip when it has not been generated.
   it.skipIf(full.length === 0)("full set has at least 200 valid labeled images", () => {

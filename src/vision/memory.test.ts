@@ -57,6 +57,23 @@ describe("OpenCV memory", () => {
     expect(live.size).toBe(before);
   });
 
+  it("deletes every Mat when warping from degenerate corners", async () => {
+    const image: ImageData = {
+      data: new Uint8ClampedArray(100 * 100 * 4).fill(200),
+      width: 100,
+      height: 100,
+      colorSpace: "srgb",
+    };
+    const before = live.size;
+    const same = { x: 10, y: 10 };
+    // Whether OpenCV throws or returns garbage for collinear corners, nothing may leak.
+    await warpBoardAt(image, [same, same, same, same]).catch(() => undefined);
+    await warpBoardAt(image, [same, { x: 20, y: 20 }, { x: 30, y: 30 }, { x: 40, y: 40 }]).catch(
+      () => undefined,
+    );
+    expect(live.size).toBe(before);
+  });
+
   it(`deletes every Mat across ${SCANS} scans, including failures`, async () => {
     const images = listFixtures(BOARDS).map((f) => readJpeg(f.imagePath));
     expect(images.length).toBeGreaterThan(0);

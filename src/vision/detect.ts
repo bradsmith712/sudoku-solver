@@ -1,4 +1,4 @@
-import type { Mat } from "@techstark/opencv-js";
+import type { Mat, MatVector } from "@techstark/opencv-js";
 import { isConvex, orderCorners, polygonArea, type Point } from "./geometry";
 import type { CV } from "./opencv";
 
@@ -230,12 +230,15 @@ function quadFromSides(cv: CV, contour: Mat, binary: Mat, minArea: number): Fit 
  * open), then open with a kernel wider than pen strokes and text. Caller deletes.
  */
 function solidBoardMask(cv: CV, binary: Mat): Mat {
-  const mask = binary.clone();
-  const contours = new cv.MatVector();
-  const hierarchy = new cv.Mat();
   const k = Math.max(5, Math.round(Math.min(binary.rows, binary.cols) / 60)) | 1;
-  const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(k, k));
+  const mask = binary.clone();
+  let contours: MatVector | undefined;
+  let hierarchy: Mat | undefined;
+  let kernel: Mat | undefined;
   try {
+    contours = new cv.MatVector();
+    hierarchy = new cv.Mat();
+    kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(k, k));
     cv.findContours(binary, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
     const maxHole = MAX_FILLED_HOLE_FRACTION * binary.rows * binary.cols;
     for (let i = 0; i < contours.size(); i++) {
@@ -255,9 +258,9 @@ function solidBoardMask(cv: CV, binary: Mat): Mat {
     mask.delete();
     throw err;
   } finally {
-    contours.delete();
-    hierarchy.delete();
-    kernel.delete();
+    contours?.delete();
+    hierarchy?.delete();
+    kernel?.delete();
   }
 }
 

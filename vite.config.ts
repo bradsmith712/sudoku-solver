@@ -43,7 +43,8 @@ function swPrecache(): Plugin {
 }
 
 export default defineConfig({
-  base: "./",
+  // The Pages workflow sets BASE_PATH (e.g. "/sudoku-solver/"); relative otherwise.
+  base: process.env.BASE_PATH || "./",
   plugins: [swPrecache()],
   test: {
     include: ["src/**/*.test.ts", "tests/**/*.test.ts"],

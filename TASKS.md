@@ -36,7 +36,7 @@ Done when: a puzzle can be entered and solved entirely by hand in the browser.
 
 ## Phase 3: Synthetic test image generator (tools, offline)
 
-- [ ] Write a script that renders a puzzle grid image using multiple fonts and line weights
+- [x] Write a script that renders a puzzle grid image using multiple fonts and line weights
 - [ ] Add augmentations: perspective warp, rotation, blur, noise, uneven lighting, background clutter
 - [ ] Generate at least 200 labeled images into `tests/fixtures/synthetic/` with ground-truth grids as JSON
 - [ ] Commit a small sample (about 20) and ignore the rest in git; document how to regenerate

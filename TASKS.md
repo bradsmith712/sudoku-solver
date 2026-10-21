@@ -53,6 +53,7 @@ Done when: the fixture set exists and a script can list image and ground-truth p
 - [x] Apply a perspective transform to a 450x450 top-down board image
 - [x] Throw `ScanError("no_board_found")` when no valid board is detected
 - [ ] Test: on the synthetic set, at least 95% of boards are detected and aligned; save debug output images for failures
+  - Blocked on Phase 3 (`feat/testdata`): `src/vision/detect.fixtures.test.ts` is written and passes 12/12 on the hand-made set in `src/vision/__fixtures__/boards`; it picks up `tests/fixtures/synthetic/` (or `$VISION_SYNTHETIC_DIR`) and `tests/fixtures/real/` automatically once they exist. Tick after it passes on the merged synthetic set.
 - [ ] Verify all OpenCV `Mat` objects are deleted (no memory growth over 100 scans)
 
 Done when: warped boards look correct on the synthetic set and on the real photos.

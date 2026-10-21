@@ -7,7 +7,7 @@ import {
   renderBoard,
   sampleGrid,
 } from "./__fixtures__/render";
-import { findBoardQuad } from "./detect";
+import { edgeSupport, findBoardQuad } from "./detect";
 import { distance, type Point } from "./geometry";
 import { loadOpenCv, type CV } from "./opencv";
 import { preprocess } from "./preprocess";
@@ -76,5 +76,26 @@ describe("findBoardQuad", () => {
 
   it("returns null when the only quadrilateral is too small", () => {
     expect(detect([[p(10, 10), p(80, 10), p(80, 80), p(10, 80)]])).toBeNull();
+  });
+});
+
+describe("edgeSupport", () => {
+  it("scores the true outline near 1 and a quad cutting through cells low", () => {
+    const truth = [p(140, 60), p(500, 60), p(500, 420), p(140, 420)];
+    const scene = blankScene(cv, 640, 480, [200, 190, 180, 255]);
+    const board = renderBoard(cv, sampleGrid(1), defaultStyle(360));
+    let bin: Mat | undefined;
+    try {
+      placeBoard(cv, scene, board, truth);
+      bin = preprocess(cv, scene);
+      expect(edgeSupport(bin, truth)).toBeGreaterThan(0.95);
+      // Shifted by half a cell: every side crosses cells instead of following a line.
+      const off = truth.map((q) => p(q.x + 20, q.y + 20));
+      expect(edgeSupport(bin, off)).toBeLessThan(0.75);
+    } finally {
+      scene.delete();
+      board.delete();
+      bin?.delete();
+    }
   });
 });

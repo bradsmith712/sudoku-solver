@@ -13,5 +13,13 @@
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
+    <script type="module">
+      // Production only: in dev the worker would serve stale modules over HMR.
+      if (import.meta.env.PROD && "serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
+        });
+      }
+    </script>
   </body>
 </html>

@@ -50,7 +50,7 @@ Done when: the fixture set exists and a script can list image and ground-truth p
 - [x] Load OpenCV.js lazily and verify it initializes in the browser and in tests
 - [x] Implement preprocessing: grayscale, blur, adaptive threshold
 - [x] Find the largest quadrilateral contour and order its four corners
-- [ ] Apply a perspective transform to a 450x450 top-down board image
+- [x] Apply a perspective transform to a 450x450 top-down board image
 - [ ] Throw `ScanError("no_board_found")` when no valid board is detected
 - [ ] Test: on the synthetic set, at least 95% of boards are detected and aligned; save debug output images for failures
 - [ ] Verify all OpenCV `Mat` objects are deleted (no memory growth over 100 scans)

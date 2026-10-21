@@ -54,3 +54,9 @@ export function isConvex(points: readonly Point[]): boolean {
 export function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
+
+/** Apply a row-major 3x3 homography to a point. */
+export function applyHomography(h: readonly number[], p: Point): Point {
+  const w = h[6] * p.x + h[7] * p.y + h[8];
+  return { x: (h[0] * p.x + h[1] * p.y + h[2]) / w, y: (h[3] * p.x + h[4] * p.y + h[5]) / w };
+}

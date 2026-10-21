@@ -41,7 +41,9 @@ Done when: a puzzle can be entered and solved entirely by hand in the browser.
 - [x] Generate at least 200 labeled images into `tests/fixtures/synthetic/` with ground-truth grids as JSON
 - [x] Commit a small sample (about 20) and ignore the rest in git; document how to regenerate
 - [ ] Add 10 or more real photos of printed puzzles supplied by the owner to `tests/fixtures/real/` with ground-truth JSON
+  - Blocked: waiting on the owner's photos. Add `<name>.jpg` plus `<name>.json` containing at least `{"grid": [[...9x9...]]}` (format in `tools/synth/README.md`); `tools/synth/list-pairs.ts` and `tests/fixtures/image-fixtures.test.ts` pick them up automatically.
 - [ ] Owner: supply 390px mobile mockups for all eight screens as `docs/mockups-mobile.png`, with extra attention to screens 2, 4, 5 and 8 (needed before Phase 6)
+  - Blocked: owner task; `docs/mockups-mobile.png` is not in the repo yet.
 
 Done when: the fixture set exists and a script can list image and ground-truth pairs.
 

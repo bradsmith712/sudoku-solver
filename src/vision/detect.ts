@@ -1,11 +1,19 @@
 import type { Mat, MatVector } from "@techstark/opencv-js";
-import { isConvex, orderCorners, polygonArea, type Point } from "./geometry";
+import {
+  applyHomography,
+  containsPoint,
+  isConvex,
+  orderCorners,
+  polygonArea,
+  squareToQuad,
+  type Point,
+} from "./geometry";
 import type { CV } from "./opencv";
 
 /** A board must cover at least this fraction of the image. */
 export const MIN_BOARD_AREA_FRACTION = 0.05;
 /** Largest contours to try before giving up. */
-const MAX_CANDIDATES = 5;
+const MAX_CANDIDATES = 8;
 /** approxPolyDP tolerances, as a fraction of the contour perimeter. */
 const APPROX_EPSILONS = [0.02, 0.035, 0.05];
 /** The quad must explain most of the contour's convex hull (rejects blobs). */
@@ -16,6 +24,16 @@ const MIN_SIDE_RATIO = 0.3;
 const MIN_EDGE_SUPPORT = 0.75;
 /** Edge support at which a fit is trusted without trying the slower fallbacks. */
 const GOOD_EDGE_SUPPORT = 0.9;
+/** Weakest 3x3 box line's ink contrast for a quad to count as a sudoku grid. */
+const MIN_GRID_SUPPORT = 0.4;
+/**
+ * A grid quad nested inside another and covering at least this fraction of it is
+ * the board, and the outer one its paper or a frame: board-to-paper area runs from
+ * about 0.4 (wide margin) to 0.9, while a single 3x3 box is only 1/9 of a board.
+ */
+const MIN_NESTED_AREA = 0.25;
+/** Box lines are searched this far (fraction of the board) from where the quad puts them. */
+const GRID_SHIFT = 1 / 60;
 /** Contour segments within 8 degrees and 2% of the board size merge into one side. */
 const SIDE_PARALLEL_COS = Math.cos((8 * Math.PI) / 180);
 const SIDE_MERGE_DISTANCE = 0.02;
@@ -24,7 +42,8 @@ const MAX_SIDE_LINES = 12;
 /** Holes up to this fraction of the image (a few cells of a full-frame board) get filled. */
 const MAX_FILLED_HOLE_FRACTION = 0.02;
 
-type Fit = { quad: Point[]; support: number };
+/** support: edgeSupport of the outline; grid: whether gridSupport passed. */
+type Fit = { quad: Point[]; support: number; grid: boolean };
 
 function matToPoints(mat: Mat): Point[] {
   const pts: Point[] = [];
@@ -41,6 +60,30 @@ function plausibleQuad(quad: readonly Point[], minArea: number): boolean {
   return isConvex(quad) && polygonArea(quad) >= minArea && sideRatio(quad) >= MIN_SIDE_RATIO;
 }
 
+/** Fraction of points sampled every 2 px from a to b with ink within `radius` px. */
+function segmentSupport(binary: Mat, a: Point, b: Point, radius: number): number {
+  const { rows, cols } = binary;
+  const data = binary.data;
+  const steps = Math.max(1, Math.round(Math.hypot(b.x - a.x, b.y - a.y) / 2));
+  let hits = 0;
+  for (let s = 0; s < steps; s++) {
+    const x = Math.round(a.x + ((b.x - a.x) * s) / steps);
+    const y = Math.round(a.y + ((b.y - a.y) * s) / steps);
+    search: for (let dy = -radius; dy <= radius; dy++) {
+      const yy = y + dy;
+      if (yy < 0 || yy >= rows) continue;
+      for (let dx = -radius; dx <= radius; dx++) {
+        const xx = x + dx;
+        if (xx >= 0 && xx < cols && data[yy * cols + xx]) {
+          hits++;
+          break search;
+        }
+      }
+    }
+  }
+  return hits / steps;
+}
+
 /**
  * How well a quad's edges lie on ink: for each side, the fraction of points sampled
  * every 2 px that have ink within a couple of pixels in the binary mask; returns
@@ -48,33 +91,50 @@ function plausibleQuad(quad: readonly Point[], minArea: number): boolean {
  * side that strays onto clutter or across the board's interior scores much lower.
  */
 export function edgeSupport(binary: Mat, quad: readonly Point[]): number {
-  const { rows, cols } = binary;
-  const data = binary.data;
-  const radius = Math.max(2, Math.round(Math.min(rows, cols) / 400));
+  const radius = Math.max(2, Math.round(Math.min(binary.rows, binary.cols) / 400));
   let weakest = 1;
   for (let i = 0; i < 4; i++) {
-    const a = quad[i];
-    const b = quad[(i + 1) % 4];
-    const steps = Math.max(1, Math.round(Math.hypot(b.x - a.x, b.y - a.y) / 2));
-    let hits = 0;
-    for (let s = 0; s < steps; s++) {
-      const x = Math.round(a.x + ((b.x - a.x) * s) / steps);
-      const y = Math.round(a.y + ((b.y - a.y) * s) / steps);
-      search: for (let dy = -radius; dy <= radius; dy++) {
-        const yy = y + dy;
-        if (yy < 0 || yy >= rows) continue;
-        for (let dx = -radius; dx <= radius; dx++) {
-          const xx = x + dx;
-          if (xx >= 0 && xx < cols && data[yy * cols + xx]) {
-            hits++;
-            break search;
-          }
-        }
-      }
-    }
-    weakest = Math.min(weakest, hits / steps);
+    weakest = Math.min(weakest, segmentSupport(binary, quad[i], quad[(i + 1) % 4], radius));
   }
   return weakest;
+}
+
+/**
+ * How clearly the quad's interior shows a sudoku's 3x3 box lines. For each of the
+ * four lines at 1/3 and 2/3 across (mapped through the quad's perspective): the
+ * fraction of pixels exactly on ink, at the best of small shifts that absorb fit
+ * error, minus the fraction on the lines half a cell either side. Returns the
+ * weakest line's contrast. Contrast rather than raw ink keeps the score meaningful
+ * on noisy masks, where speckle puts ink near every point. An inked outline that is
+ * not a board, such as the edge of the paper the board is printed on (adaptive
+ * thresholding inks the dark side of that step), scores near 0.
+ */
+export function gridSupport(binary: Mat, quad: readonly Point[]): number {
+  const h = squareToQuad(quad);
+  const side = Math.sqrt(polygonArea(quad));
+  const at = (u: number, v: number) => applyHomography(h, { x: u, y: v });
+  let weakest = Infinity;
+  for (const across of [true, false]) {
+    const ink = (t: number) => {
+      const a = across ? at(t, 0) : at(0, t);
+      const b = across ? at(t, 1) : at(1, t);
+      return inkOnSegment(binary, a, b) / (Math.round(Math.hypot(b.x - a.x, b.y - a.y)) + 1);
+    };
+    for (const t of [1 / 3, 2 / 3]) {
+      let on = 0;
+      for (let dt = -GRID_SHIFT; dt <= GRID_SHIFT; dt += 1 / side) on = Math.max(on, ink(t + dt));
+      const off = (ink(t - 1 / 18) + ink(t + 1 / 18)) / 2;
+      weakest = Math.min(weakest, on - off);
+    }
+  }
+  return weakest;
+}
+
+function makeFit(binary: Mat, quad: Point[]): Fit {
+  const support = edgeSupport(binary, quad);
+  // Only well-outlined quads can win on grid, so skip the extra sampling otherwise.
+  const grid = support >= GOOD_EDGE_SUPPORT && gridSupport(binary, quad) >= MIN_GRID_SUPPORT;
+  return { quad, support, grid };
 }
 
 /** Fit a convex 4-gon to one contour's hull, or null if none fits. */
@@ -143,10 +203,12 @@ function intersect(l1: Line, l2: Line): Point | null {
 }
 
 /**
- * Prefer fits whose edges are all on ink and, among those, the largest: the inner
- * box lines are inked too, so only area separates the outer border from them.
+ * Prefer fits that enclose a 3x3 box grid, then fits whose edges are all on ink and,
+ * among those, the largest: the inner box lines are inked too, so only area
+ * separates the outer border from them.
  */
 function better(a: Fit, b: Fit): boolean {
+  if (a.grid !== b.grid) return a.grid;
   const aGood = a.support >= GOOD_EDGE_SUPPORT;
   const bGood = b.support >= GOOD_EDGE_SUPPORT;
   if (aGood !== bGood) return aGood;
@@ -217,7 +279,7 @@ function quadFromSides(cv: CV, contour: Mat, binary: Mat, minArea: number): Fit 
             if (p) quad.push(p);
           }
           if (quad.length !== 4 || !plausibleQuad(quad, minArea)) continue;
-          const fit = { quad, support: edgeSupport(binary, quad) };
+          const fit = makeFit(binary, quad);
           if (!best || better(fit, best)) best = fit;
         }
   return best;
@@ -265,15 +327,19 @@ function solidBoardMask(cv: CV, binary: Mat): Mat {
 }
 
 /**
- * Among the largest external contours of `mask`, the first quad whose edges are
- * well supported by ink in `binary`, else the best-supported one. Each contour is
- * fitted by its hull first and by its straight sides if the hull fit is weak.
+ * Among the largest contours of `mask`, the best quad by `better`. Nested contours
+ * are included, so a board inside an inked outline is still found. When the edge of
+ * the paper (or a frame) runs close to the board, its own 1/3 lines can land on the
+ * board's box lines and it passes as a grid too; so a grid quad nested well inside
+ * the chosen one replaces it (see MIN_NESTED_AREA). Each contour is fitted by its
+ * hull first and by its straight sides if the hull fit is weak.
  */
 function bestQuad(cv: CV, mask: Mat, binary: Mat, minArea: number): Fit | null {
   const contours = new cv.MatVector();
   const hierarchy = new cv.Mat();
+  const fits: Fit[] = [];
   try {
-    cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+    cv.findContours(mask, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
     const candidates: { index: number; area: number }[] = [];
     for (let i = 0; i < contours.size(); i++) {
       const c = contours.get(i);
@@ -288,26 +354,38 @@ function bestQuad(cv: CV, mask: Mat, binary: Mat, minArea: number): Fit | null {
       }
     }
     candidates.sort((a, b) => b.area - a.area);
-    let best: Fit | null = null;
     for (const { index } of candidates.slice(0, MAX_CANDIDATES)) {
       const c = contours.get(index);
       try {
         const hullQuad = quadFromHull(cv, c, minArea);
-        let fit = hullQuad ? { quad: hullQuad, support: edgeSupport(binary, hullQuad) } : null;
-        if (!fit || fit.support < GOOD_EDGE_SUPPORT) {
+        let fit = hullQuad ? makeFit(binary, hullQuad) : null;
+        if (!fit || !fit.grid) {
           const sides = quadFromSides(cv, c, binary, minArea);
-          if (sides && (!fit || sides.support > fit.support)) fit = sides;
+          if (sides && (!fit || better(sides, fit))) fit = sides;
         }
-        if (fit && fit.support >= GOOD_EDGE_SUPPORT) return fit;
-        if (fit && (!best || fit.support > best.support)) best = fit;
+        if (fit) fits.push(fit);
       } finally {
         c.delete();
       }
     }
-    return best;
   } finally {
     contours.delete();
     hierarchy.delete();
+  }
+  let best = fits.reduce<Fit | null>((b, f) => (!b || better(f, b) ? f : b), null);
+  for (;;) {
+    const outer = best;
+    if (!outer?.grid) return outer;
+    const area = polygonArea(outer.quad);
+    const inner = fits.find(
+      (f) =>
+        f.grid &&
+        polygonArea(f.quad) < area &&
+        polygonArea(f.quad) >= MIN_NESTED_AREA * area &&
+        f.quad.every((p) => containsPoint(outer.quad, p)),
+    );
+    if (!inner) return outer;
+    best = inner;
   }
 }
 
@@ -368,20 +446,21 @@ function refineQuad(binary: Mat, quad: readonly Point[]): Point[] {
 
 /**
  * Find the board outline in a binary ink mask (see preprocess): the largest
- * external contour that is well approximated by a convex quadrilateral covering at
- * least MIN_BOARD_AREA_FRACTION of the image and whose edges lie on ink. If clutter
- * or text touching the board spoils that, retry on a mask where the board is a
- * solid blob (solidBoardMask). Returns the corners ordered top-left, top-right,
+ * contour that is well approximated by a convex quadrilateral covering at least
+ * MIN_BOARD_AREA_FRACTION of the image, whose edges lie on ink and whose interior
+ * shows the 3x3 box lines (see gridSupport). If clutter or text touching the board
+ * spoils that, retry on a mask where the board is a solid blob (solidBoardMask).
+ * A quad without a box grid is still returned if nothing better is found. Returns the corners ordered top-left, top-right,
  * bottom-right, bottom-left, or null if there is no board.
  */
 export function findBoardQuad(cv: CV, binary: Mat): [Point, Point, Point, Point] | null {
   const minArea = MIN_BOARD_AREA_FRACTION * binary.rows * binary.cols;
   let fit = bestQuad(cv, binary, binary, minArea);
-  if (!fit || fit.support < GOOD_EDGE_SUPPORT) {
+  if (!fit?.grid) {
     const solid = solidBoardMask(cv, binary);
     try {
       const retry = bestQuad(cv, solid, binary, minArea);
-      if (retry && (!fit || retry.support > fit.support)) fit = retry;
+      if (retry && (!fit || better(retry, fit))) fit = retry;
     } finally {
       solid.delete();
     }

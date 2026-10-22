@@ -67,6 +67,42 @@ describe("findBoardQuad", () => {
     expectCorners(found, truth, 3);
   });
 
+  describe("board printed on a sheet of paper on a dark surface", () => {
+    // Adaptive thresholding inks the dark side of the paper's edge, so the sheet's
+    // outline is a closed, fully inked quad around the board.
+    function detectOnPaper(board: Point[], paper: Point[]) {
+      const scene = blankScene(cv, 640, 480, [45, 48, 55, 255]);
+      const sheet = new cv.Mat(100, 100, cv.CV_8UC4, new cv.Scalar(236, 230, 218, 255));
+      const grid = renderBoard(cv, sampleGrid(1), defaultStyle(360));
+      let bin: Mat | undefined;
+      try {
+        placeBoard(cv, scene, sheet, paper);
+        placeBoard(cv, scene, grid, board);
+        bin = preprocess(cv, scene);
+        return findBoardQuad(cv, bin);
+      } finally {
+        scene.delete();
+        sheet.delete();
+        grid.delete();
+        bin?.delete();
+      }
+    }
+
+    it("finds the board, not the paper, inside a wide margin", () => {
+      const truth = [p(200, 110), p(440, 110), p(440, 350), p(200, 350)];
+      const paper = [p(130, 40), p(510, 40), p(510, 420), p(130, 420)];
+      expectCorners(detectOnPaper(truth, paper), truth, 3);
+    });
+
+    it("finds the board, not the paper, when a thin margin lines the paper's box lines up with the board's", () => {
+      // A margin under half a cell puts the paper's 1/3 lines within the box-line
+      // search window of the board's, so the sheet alone looks like a grid too.
+      const truth = [p(200, 80), p(470, 120), p(430, 390), p(160, 350)];
+      const paper = truth.map(({ x, y }) => p(315 + (x - 315) * 1.07, 235 + (y - 235) * 1.07));
+      expectCorners(detectOnPaper(truth, paper), truth, 3);
+    });
+  });
+
   it("returns null when there is no board", () => {
     expect(
       detect([], (scene) => cv.circle(scene, new cv.Point(320, 240), 200, [0, 0, 0, 255], 6)),

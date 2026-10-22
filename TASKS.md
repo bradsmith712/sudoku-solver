@@ -53,8 +53,8 @@ Done when: the fixture set exists and a script can list image and ground-truth p
 - [x] Find the largest quadrilateral contour and order its four corners
 - [x] Apply a perspective transform to a 450x450 top-down board image
 - [x] Throw `ScanError("no_board_found")` when no valid board is detected
-- [ ] Test: on the synthetic set, at least 95% of boards are detected and aligned; save debug output images for failures
-  - Blocked on Phase 3 (`feat/testdata`): `src/vision/detect.fixtures.test.ts` is written and passes 12/12 on the hand-made set in `src/vision/__fixtures__/boards`; it picks up `tests/fixtures/synthetic/` (or `$VISION_SYNTHETIC_DIR`) and `tests/fixtures/real/` automatically once they exist. Tick after it passes on the merged synthetic set.
+- [x] Test: on the synthetic set, at least 95% of boards are detected and aligned; save debug output images for failures
+  - 239/240 on the full generated set, 20/20 on the committed sample. The one failure (synth-0118) has exact corners; the test's grid-line heuristic misreads its faint gray thin lines.
 - [x] Verify all OpenCV `Mat` objects are deleted (no memory growth over 100 scans)
 
 Done when: warped boards look correct on the synthetic set and on the real photos.
@@ -120,6 +120,6 @@ Done when: the public HTTPS URL works on a phone and can be installed to the hom
 
 Record each time you had to step in, the cause, and the fix (rule, hook, skill, or clearer spec). The count should fall over time.
 
-| Date | Task | What went wrong | Fix |
-| ---- | ---- | --------------- | --- |
-|      |      |                 |     |
+| Date       | Task                   | What went wrong                                                                                                                                       | Fix                                                                                                                                            |
+| ---------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-21 | Phase 4 detection test | Synthetic test failed (18/20, incl. a clean image): detector took the paper sheet's edge, inked by adaptive threshold on dark surfaces, for the board | Search nested contours, require a 3x3 box grid inside the quad, prefer a grid quad nested inside another; regression tests in `detect.test.ts` |

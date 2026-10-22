@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { isConvex, orderCorners, polygonArea, type Point } from "./geometry";
+import {
+  applyHomography,
+  containsPoint,
+  isConvex,
+  orderCorners,
+  polygonArea,
+  squareToQuad,
+  type Point,
+} from "./geometry";
 
 const p = (x: number, y: number): Point => ({ x, y });
 
@@ -62,5 +70,35 @@ describe("polygonArea and isConvex", () => {
     expect(isConvex([p(0, 0), p(10, 0), p(3, 3), p(0, 10)])).toBe(false);
     // Self-intersecting "bow tie".
     expect(isConvex([p(0, 0), p(10, 10), p(10, 0), p(0, 10)])).toBe(false);
+  });
+});
+
+describe("squareToQuad", () => {
+  it("maps the unit square's corners onto a perspective quad", () => {
+    const quad = [p(190, 40), p(560, 90), p(520, 450), p(90, 380)];
+    const h = squareToQuad(quad);
+    [p(0, 0), p(1, 0), p(1, 1), p(0, 1)].forEach((c, i) => {
+      const m = applyHomography(h, c);
+      expect(m.x).toBeCloseTo(quad[i].x, 6);
+      expect(m.y).toBeCloseTo(quad[i].y, 6);
+    });
+  });
+
+  it("maps the centre to the diagonals' intersection, not the corner average", () => {
+    // Trapezoid: diagonals cross at y = 200 * 300 / (300 + 100) = 150, not 100.
+    const h = squareToQuad([p(0, 0), p(300, 0), p(200, 200), p(100, 200)]);
+    const c = applyHomography(h, p(0.5, 0.5));
+    expect(c.x).toBeCloseTo(150, 6);
+    expect(c.y).toBeCloseTo(150, 6);
+  });
+});
+
+describe("containsPoint", () => {
+  it("tests strict containment in a convex polygon of either winding", () => {
+    const quad = [p(0, 0), p(100, 10), p(90, 100), p(5, 90)];
+    expect(containsPoint(quad, p(50, 50))).toBe(true);
+    expect(containsPoint([...quad].reverse(), p(50, 50))).toBe(true);
+    expect(containsPoint(quad, p(120, 50))).toBe(false);
+    expect(containsPoint(quad, p(0, 0))).toBe(false);
   });
 });

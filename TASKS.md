@@ -48,13 +48,14 @@ Done when: the fixture set exists and a script can list image and ground-truth p
 
 ## Phase 4: Board detection
 
-- [ ] Load OpenCV.js lazily and verify it initializes in the browser and in tests
-- [ ] Implement preprocessing: grayscale, blur, adaptive threshold
-- [ ] Find the largest quadrilateral contour and order its four corners
-- [ ] Apply a perspective transform to a 450x450 top-down board image
-- [ ] Throw `ScanError("no_board_found")` when no valid board is detected
+- [x] Load OpenCV.js lazily and verify it initializes in the browser and in tests
+- [x] Implement preprocessing: grayscale, blur, adaptive threshold
+- [x] Find the largest quadrilateral contour and order its four corners
+- [x] Apply a perspective transform to a 450x450 top-down board image
+- [x] Throw `ScanError("no_board_found")` when no valid board is detected
 - [ ] Test: on the synthetic set, at least 95% of boards are detected and aligned; save debug output images for failures
-- [ ] Verify all OpenCV `Mat` objects are deleted (no memory growth over 100 scans)
+  - Blocked on Phase 3 (`feat/testdata`): `src/vision/detect.fixtures.test.ts` is written and passes 12/12 on the hand-made set in `src/vision/__fixtures__/boards`; it picks up `tests/fixtures/synthetic/` (or `$VISION_SYNTHETIC_DIR`) and `tests/fixtures/real/` automatically once they exist. Tick after it passes on the merged synthetic set.
+- [x] Verify all OpenCV `Mat` objects are deleted (no memory growth over 100 scans)
 
 Done when: warped boards look correct on the synthetic set and on the real photos.
 

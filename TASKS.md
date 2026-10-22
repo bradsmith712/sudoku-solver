@@ -89,9 +89,12 @@ Done when: photo in, solved puzzle out works in a real browser from end to end.
 
 ## Phase 7: PWA and deploy
 
-- [ ] Add a web manifest, icons, and a service worker that caches the app shell, OpenCV.js, and the model
-- [ ] Verify installability and offline manual entry using Lighthouse or Playwright
-- [ ] Configure GitHub Pages deployment through Actions (correct `base` path in Vite config)
+- [x] Add a web manifest, icons, and a service worker that caches the app shell, OpenCV.js, and the model
+  - App shell is precached. OpenCV.js and model entries are a TODO (`HEAVY` in `public/sw.js`) until Phases 4-5 fix their paths; until then they are cached on first use.
+- [x] Verify installability and offline manual entry using Lighthouse or Playwright
+  - Verified with an ad-hoc Playwright script (CDP `Page.getInstallabilityErrors` empty, SW controls page, offline reload then enter and solve at 390px). Not yet a committed e2e test.
+- [x] Configure GitHub Pages deployment through Actions (correct `base` path in Vite config)
+  - `.github/workflows/deploy.yml` deploys `main`; `BASE_PATH` comes from `actions/configure-pages`. Owner: set Settings > Pages > Source to "GitHub Actions".
 - [ ] Deploy and verify the live URL with a browser check; confirm no console errors
 - [ ] Test on a real phone with a real puzzle and note any failures as new tasks
 

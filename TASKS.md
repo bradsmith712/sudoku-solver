@@ -75,8 +75,11 @@ Done when: warped boards look correct on the synthetic set and on the real photo
   - `recognizeBoard(warped)` in `src/vision/recognize.ts`: the session is created once and reused (Phase 6 can call it per orientation); wasm (14.2 MB, 3.7 MB gzip) and model are self-hosted Vite assets, no CDN; tests run the same package and model under Node 18. Blank-cell confidence comes from the ink rule (`blankConfidence`), documented in SPEC.md. Checked in headless Chromium: correct digits, one model load, only same-origin requests.
 - [x] Add `npm run eval:vision` reporting cell accuracy and full-board accuracy on synthetic and real sets, with real results per split and per tag (`tally()` in `src/vision/__fixtures__/real.ts`); headline real numbers come from `split=test` only
   - `src/vision/vision.eval.test.ts`: (1) all cells, (2) printed-digit cells, (3) perfect boards per set, split and tag; true blanks under 0.9 per board; share of missed digits under 0.9; top-10 confusions; `test-results/vision-eval/report.json`; fails on a missed SPEC target. `EVAL_SPLITS=train` keeps test photos out while tuning.
-- [ ] Iterate on augmentation or model until targets are met: at least 98% cell accuracy (synthetic), at least 90% (real clean photos)
-- [ ] Check model size and keep it small (target under 1 MB)
+- [x] Iterate on augmentation or model until targets are met: at least 98% cell accuracy (synthetic), at least 90% (real clean photos)
+  - v1 (synthetic fonts only): synthetic 99.5% cells / 92.5% boards, real train 100%; 47 of 97 synthetic errors were American Typewriter's flat-topped 3 read as 5, and errors grew with digit size. v2 adds 7 common print families (American Typewriter, Rockwell, Palatino, Menlo, Didot, Baskerville, Optima), digit height 40-80% of the cell and more bold strokes. Chosen on synthetic + split=train only; no real crops needed.
+  - Final (`npm run eval:vision`), as (1) all cells / (2) printed-digit cells / (3) perfect boards: synthetic 99.8% / 99.5% / 97.9% (240 boards); real train 100% / 100% / 100% (10); real test 100% / 100% / 100% (7). True blanks under 0.9: 0 per board. Only 7 of 41 synthetic misreads fall under 0.9, so the review screen would flag few of them.
+- [x] Check model size and keep it small (target under 1 MB)
+  - 361 KB (`src/vision/model/model.onnx`); `train.py` refuses to export 1 MB or more.
 
 Done when: `eval:vision` meets the thresholds in `SPEC.md`.
 

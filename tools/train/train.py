@@ -52,6 +52,9 @@ FAMILIES = [
     "Avenir", "Avenir Next", "Avenir Next Condensed", "Futura", "Trebuchet MS", "Tahoma",
     "Verdana", "Gill Sans", "DIN Alternate", "DIN Condensed", "Georgia", "Times New Roman",
     "Courier New", ".SF NS",
+    # Common print faces seen in the synthetic set's misreads: American Typewriter's
+    # flat-topped 3, and bold slab/old-style digits.
+    "American Typewriter", "Rockwell", "Palatino", "Menlo", "Didot", "Baskerville", "Optima",
 ]
 # Families never used for training: their crops form the validation set.
 HELD_OUT = {"Verdana", "Gill Sans", "DIN Alternate", "Georgia"}
@@ -127,7 +130,7 @@ def crop_cell(flat: np.ndarray, left: float, right: float, top: float, bottom: f
 def digit_mask(rng: random.Random, font: tuple[str, int, str], digit: int, mirror=False) -> np.ndarray:
     """Anti-aliased ink coverage (0-1) of one digit on the CANVAS, already rotated and placed."""
     ss = 4  # supersample
-    height = rng.uniform(0.40, 0.60) * CELL  # digit height in board px (real books: ~0.5)
+    height = rng.uniform(0.40, 0.80) * CELL  # digit height in board px (real books: ~0.5)
     text = str(digit)
     probe = ImageFont.truetype(font[0], 200, index=font[1])
     _, py0, _, py1 = probe.getbbox(text)
@@ -142,7 +145,7 @@ def digit_mask(rng: random.Random, font: tuple[str, int, str], digit: int, mirro
     img = img.rotate(rng.uniform(-8, 8), resample=Image.BILINEAR, center=(cx, cy))
     if mirror:
         img = img.transpose(Image.FLIP_LEFT_RIGHT)
-    weight = rng.choice([None, None, "thin", "bold"])
+    weight = rng.choice([None, "thin", "bold", "bold"])
     if weight == "bold":
         img = img.filter(ImageFilter.MaxFilter(5))
     elif weight == "thin":

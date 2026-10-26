@@ -129,8 +129,20 @@ SPEC budget: from photo to review screen in under 3 s for a 1024 px image on a m
 | Device and setting                                         | Cold via Upload  | Warm   | Counts toward the budget? |
 | ---------------------------------------------------------- | ---------------- | ------ | ------------------------- |
 | MacBook Air (M4), Chromium, 4x CPU throttling, local build | 1.0 s            | 0.76 s | Yes (must be under 3 s)   |
+| Same, against the deployed site (2026-10-26)               | 0.98 s           | 0.79 s | Yes (must be under 3 s)   |
 | GitHub Actions `ubuntu-latest` runner, 4x CPU throttling   | 3.6 s            | –      | No, informational only    |
 | Real phone                                                 | not yet measured | –      | –                         |
+
+**First visit to the deployed site** (MacBook Air M4, 4x CPU throttling, nothing cached). The vision files are about 7.6 MB gzipped (OpenCV.js 3.6 MB, onnxruntime wasm 3.7 MB, model 0.3 MB), so on a first visit the network decides how long the scan takes:
+
+| Network (CDP emulation)                           | Photo chosen to review | Tap Upload to review (includes 2 s picking) |
+| ------------------------------------------------- | ---------------------- | ------------------------------------------- |
+| Unthrottled home connection                       | 0.93 s                 | 3.0 s                                       |
+| 9 Mbps down, 60 ms RTT                            | 6.5 s                  | 8.5 s                                       |
+| 1.6 Mbps down, 150 ms RTT                         | 38 s                   | 40 s                                        |
+| Repeat visit, files from the service worker cache | 0.95 s                 | –                                           |
+
+The SPEC budget covers processing, not this one-time download. From the second scan on, network speed doesn't matter.
 
 - **The 3 s budget is enforced** locally and in `npm run test:live` against the deployed site.
 - **GitHub runners are excluded.** They are several times slower than the M4 before any throttling is applied, so 4x throttling there is much slower than a mid-range phone. CI records its timings in the job summary. It fails only if a cold scan via Upload takes more than 6 s, or more than 1.5x as long as the previous successful run.

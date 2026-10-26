@@ -9,6 +9,7 @@
     "test:fast": "vitest run --exclude 'src/vision/*.fixtures.test.ts' --exclude src/vision/memory.test.ts --exclude src/vision/scan.test.ts --exclude '**/*.eval.test.ts'",
     "eval:vision": "EVAL_VISION=1 vitest run src/vision/vision.eval.test.ts tests/eval/end-to-end.eval.test.ts",
     "test:e2e": "playwright test",
+    "test:live": "playwright test -c playwright.live.config.ts",
     "lint": "eslint . && prettier --check .",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",

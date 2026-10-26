@@ -8,6 +8,7 @@ Client-side web app: photo of a sudoku in, solved grid out. Full requirements ar
 - `npm test`: Vitest unit tests
 - `npm run test:fast`: the fast unit tests (what the pre-commit hook runs)
 - `npm run test:e2e`: Playwright end-to-end tests
+- `npm run test:live`: PWA and perf specs against the deployed site (`LIVE_URL` to override)
 - `npm run lint`: ESLint and Prettier check
 - `npm run typecheck`: `tsc --noEmit`
 - `npm run build`: production build

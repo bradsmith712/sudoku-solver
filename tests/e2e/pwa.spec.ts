@@ -277,3 +277,19 @@ test("activate deletes old caches and keeps still-listed assets", async ({ page 
   expect(after[assets[0]]).toEqual([kept]);
   expect(await assetsReady(page)).toBe(false); // one file is not everything
 });
+
+test("installable: Chrome reports no installability errors", async ({ page, baseURL }) => {
+  await open(page);
+  const cdp = await page.context().newCDPSession(page);
+  const { installabilityErrors } = (await cdp.send("Page.getInstallabilityErrors")) as {
+    installabilityErrors: { errorId: string }[];
+  };
+  expect(installabilityErrors).toEqual([]);
+  const manifest = (await (await page.request.get("manifest.webmanifest")).json()) as {
+    start_url: string;
+    scope: string;
+  };
+  const resolved = (u: string) => new URL(u, new URL("manifest.webmanifest", baseURL)).href;
+  expect(resolved(manifest.start_url)).toBe(baseURL);
+  expect(resolved(manifest.scope)).toBe(baseURL);
+});

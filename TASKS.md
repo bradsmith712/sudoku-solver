@@ -118,12 +118,37 @@ Done when: in a real browser, a photo uploaded or captured through the file inpu
 ## Phase 7: PWA and deploy
 
 - [x] Add a web manifest, icons, and a service worker that caches the app shell, OpenCV.js, and the model
-  - App shell is precached. OpenCV.js and model entries are a TODO (`HEAVY` in `public/sw.js`) until Phases 4-5 fix their paths; until then they are cached on first use.
+  - App shell is precached. The vision files (OpenCV.js, the onnxruntime wasm and the model) are listed with their SHA-256 hashes and cached on first scan. They are marked ready only when all of them have downloaded and verified. Cache names are versioned. Offline with nothing cached, Scan shows "connect once".
 - [x] Verify installability and offline manual entry using Lighthouse or Playwright
-  - Verified with an ad-hoc Playwright script (CDP `Page.getInstallabilityErrors` empty, SW controls page, offline reload then enter and solve at 390px). Not yet a committed e2e test.
+  - Now committed as `tests/e2e/pwa.spec.ts`, which runs locally, in CI, and against the live site (`npm run test:live`).
 - [x] Configure GitHub Pages deployment through Actions (correct `base` path in Vite config)
   - `.github/workflows/deploy.yml` deploys `main`; `BASE_PATH` comes from `actions/configure-pages`. Owner: set Settings > Pages > Source to "GitHub Actions".
-- [ ] Deploy and verify the live URL with a browser check; confirm no console errors
+- [x] Deploy and verify the live URL with a browser check; confirm no console errors
+  - Live at https://bradsmith712.github.io/sudoku-solver/ (deploy of d128371). `npm run test:live` (`tests/e2e/pwa.spec.ts` and `perf.spec.ts` against the live site), all 10 passing:
+    - installable, per CDP `Page.getInstallabilityErrors`
+    - offline manual entry works
+    - offline before any scan shows "connect once"
+    - offline scan works after one online scan, with every response served by the service worker
+    - a truncated wasm download is never cached
+    - old caches are deleted on activate
+    - no console errors, only same-origin requests, all under `/sudoku-solver/`
+    - not cross-origin isolated, and no workers (single-threaded onnxruntime)
+  - Lighthouse 11.7.1 (the last version with a PWA category): 100 in performance, accessibility, best practices, SEO and PWA.
+  - Pages gzips the vision files: about 7.6 MB over the wire, with the right content types.
+  - Live timings at 4x CPU on a MacBook Air M4:
+
+    | Case                                       | Photo chosen to review | Tap Upload to review |
+    | ------------------------------------------ | ---------------------- | -------------------- |
+    | Cold via Upload                            | 0.98 s                 | –                    |
+    | Warm                                       | 0.79 s                 | –                    |
+    | First visit, unthrottled network           | 0.93 s                 | 3.0 s                |
+    | First visit, 9 Mbps                        | 6.5 s                  | 8.5 s                |
+    | First visit, 1.6 Mbps                      | 38 s                   | 40 s                 |
+    | Repeat visit from the service worker cache | 0.95 s                 | –                    |
+
+    Slow first visits are network-bound and outside the SPEC budget, which covers processing only.
+
+  - The perf test is report-only in CI: GitHub runners at 4x measured 3.6 s cold. CI fails only above 6 s, or above 1.5x the previous successful run.
 - [ ] Test on a real phone with a real puzzle and note any failures as new tasks
 - [ ] Measure misread catch rates on fresh holdout photos (handwriting, glare, different print): the 17 current real photos read perfectly, so confidence, conflict and repair catch rates on real photos are unmeasured. Owner: supply the photos; report them like split=test (never tune on them).
 

@@ -96,7 +96,8 @@ Done when: `eval:vision` meets the thresholds in `SPEC.md`.
   - T = 1.62 (`src/vision/model/calibration.json`). Validation ECE 0.0049 -> 0.0043. Synthetic boards (labelled-corner warps): ECE 0.0046 -> 0.0029, misreads under 0.9 7/41 -> 15/41, correct cells under 0.9 0.05 -> 0.17 per board. Informational: a margin flag with the same 57-cell budget also catches 15/41.
 - [x] Repair confident misreads: if the scanned grid is invalid, unsolvable or has several solutions, swap the lowest-margin digit cells (up to 3 at a time) to their runner-up digit and accept only a unique solution (`src/solver/repair.ts`); `findConflicts` moved to `src/solver/conflicts.ts`
   - Pool of 10, checked on synthetic + split=train only (any pool from 2 to 20 gave the same result there). End to end at 1024 px, 6 of 250 boards are misread, all invalid; repair fixes the one with a single misread (synth-0103, 3 read as 4) and makes no wrong repair. The other five have 6 to 45 misreads each, beyond three swaps.
-- [ ] Add camera and upload input (`accept="image/*"` and `capture="environment"`), resizing to a max of about 1024px
+- [x] Add camera and upload input (`accept="image/*"` and `capture="environment"`), resizing to a max of about 1024px
+  - `src/ui/photo.ts`: Scan opens a file input with `capture="environment"`, Upload a plain one; decoded through `<img>` so EXIF orientation applies (like `readJpeg` in tests), then drawn to a canvas at most 1024 px on its longer side. `src/ui/scanner.ts` lazy-loads the vision chunk, calls `scan()` and `repair()`, and records performance marks.
 - [ ] Build the review screen: show the recognized grid, highlight cells under 0.9 confidence, tap to edit
 - [ ] Wire review to solve to solution view, with the solution drawn over the warped board
 - [ ] Add friendly error states and retry for no board found, invalid grid, and unsolvable puzzle

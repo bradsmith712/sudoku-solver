@@ -147,3 +147,38 @@ export function writeJpeg(path: string, image: ImageData, quality = 90): void {
   );
   writeFileSync(path, data);
 }
+
+/** The JPEG with a minimal big-endian Exif APP1 segment carrying `orientation`. */
+export function withOrientation(src: Buffer, orientation: number): Buffer {
+  const tiff = Buffer.from([
+    0x4d,
+    0x4d,
+    0x00,
+    0x2a,
+    0x00,
+    0x00,
+    0x00,
+    0x08, // "MM", 42, IFD0 at 8
+    0x00,
+    0x01, // one entry
+    0x01,
+    0x12,
+    0x00,
+    0x03,
+    0x00,
+    0x00,
+    0x00,
+    0x01,
+    0x00,
+    orientation,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00, // no next IFD
+  ]);
+  const body = Buffer.concat([Buffer.from("Exif\0\0", "latin1"), tiff]);
+  const header = Buffer.from([0xff, 0xe1, (body.length + 2) >> 8, (body.length + 2) & 0xff]);
+  return Buffer.concat([src.subarray(0, 2), header, body, src.subarray(2)]);
+}

@@ -76,6 +76,27 @@ function meanDigitConfidence(grid: Grid, confidence: number[][]): number {
   return n ? sum / n : 0;
 }
 
+/**
+ * Publish the stage timings as performance measures ("scan:detect", "scan:warp",
+ * "scan:recognize-0".."-3", "scan:total") so the UI's callers and the browser perf
+ * test can read them without reaching past scan().
+ */
+function recordTimings(start: number, t: ScanTimings): void {
+  if (typeof performance.measure !== "function") return;
+  try {
+    performance.measure("scan:detect", { start, duration: t.detect });
+    performance.measure("scan:warp", { start: start + t.detect, duration: t.warp });
+    let at = start + t.detect + t.warp;
+    t.recognize.forEach((d, i) => {
+      performance.measure(`scan:recognize-${i}`, { start: at, duration: d });
+      at += d;
+    });
+    performance.measure("scan:total", { start, duration: t.total });
+  } catch {
+    // Timing is diagnostic only.
+  }
+}
+
 /** scan() plus which turn won, every turn's score and per-stage timings (eval, perf report). */
 export async function scanDetailed(image: ImageData): Promise<ScanDetails> {
   const start = performance.now();
@@ -103,6 +124,13 @@ export async function scanDetailed(image: ImageData): Promise<ScanDetails> {
   const best = pool.reduce((a, b) => (b.meanConfidence > a.meanConfidence ? b : a));
   const { warped, read } = reads[best.turns];
 
+  const timings: ScanTimings = {
+    detect: stages.detect ?? 0,
+    warp: stages.warp ?? 0,
+    recognize,
+    total: performance.now() - start,
+  };
+  recordTimings(start, timings);
   return {
     result: {
       grid: read.grid,
@@ -114,12 +142,7 @@ export async function scanDetailed(image: ImageData): Promise<ScanDetails> {
     },
     turns: best.turns,
     candidates,
-    timings: {
-      detect: stages.detect ?? 0,
-      warp: stages.warp ?? 0,
-      recognize,
-      total: performance.now() - start,
-    },
+    timings,
   };
 }
 

@@ -26,9 +26,22 @@ jobs:
       - id: pages
         uses: actions/configure-pages@v5
       - run: npm ci
+      # Nothing is uploaded unless every check passes; `deploy` needs this job.
       - run: npm run check
         env:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+      - run: npx playwright install --with-deps chromium
+      # End-to-end tests against the production build under the Pages subpath.
+      # This rebuilds dist/ with the same BASE_PATH, so the tested build is the one deployed.
+      - run: npm run test:e2e
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: test-results
+          retention-days: 7
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

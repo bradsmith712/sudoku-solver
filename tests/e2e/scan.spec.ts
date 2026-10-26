@@ -145,6 +145,21 @@ test("no board found shows a friendly error with retry paths", async ({ page }) 
   await expectReview(page);
 });
 
+test("a scan too wrong to review asks for another photo, with review anyway", async ({ page }) => {
+  // synth-0118: the board is detected out of position and most digits come out wrong.
+  await upload(page, `${FIXTURES}synth-retake.jpg`);
+  await expect(page.getByTestId("title")).toHaveText("We couldn't read that photo", {
+    timeout: SCAN_TIMEOUT,
+  });
+  await expect(page.getByTestId("error-text")).toContainText("couldn't read this one");
+  await expect(page.getByRole("button", { name: "Try another photo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry" })).toBeHidden();
+
+  await page.getByRole("button", { name: "Review anyway" }).click();
+  await expect(page.getByTestId("title")).toHaveText("Review the recognized puzzle");
+  expect(await page.locator(".cell.conflict").count()).toBeGreaterThanOrEqual(8);
+});
+
 test("enter manually from the error screen", async ({ page }) => {
   const blank = jpeg.encode({ data: Buffer.alloc(200 * 200 * 4, 200), width: 200, height: 200 });
   await upload(page, { name: "blank.jpg", mimeType: "image/jpeg", buffer: blank.data });

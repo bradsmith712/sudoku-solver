@@ -10,6 +10,8 @@
  *
  * Reports, per set:
  *  - boards read perfectly without and with repair (a missed board counts as wrong);
+ *  - the retake guard (src/ui/retake.ts): boards sent back for another photo, any
+ *    of them read perfectly, and misreads that still reach the review screen;
  *  - of all misread cells (before repair): caught by (a) confidence under 0.9,
  *    (b) findConflicts, (c) either;
  *  - orientation: each photo also turned 90, 180 and 270 degrees; correct when the
@@ -23,6 +25,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { findConflicts } from "../../src/solver/conflicts";
 import { repair } from "../../src/solver/repair";
+import { checkRetake } from "../../src/ui/retake";
 import type { Grid } from "../../src/types";
 import { listFixtures, readJpeg } from "../../src/vision/__fixtures__/fixtures";
 import { isNegative, listRealFixtures } from "../../src/vision/__fixtures__/real";
@@ -46,6 +49,8 @@ type Result = {
   repaired: number;
   wrongRepair: boolean;
   misreads: number;
+  /** The app would ask for another photo instead of showing review (src/ui/retake.ts). */
+  retake: boolean;
   byConfidence: number;
   byConflict: number;
   byEither: number;
@@ -74,6 +79,7 @@ async function evaluate(item: Item): Promise<Result> {
     repaired: 0,
     wrongRepair: false,
     misreads: 0,
+    retake: false,
     byConfidence: 0,
     byConflict: 0,
     byEither: 0,
@@ -111,6 +117,7 @@ async function evaluate(item: Item): Promise<Result> {
     r.repaired = fixed.changed.length;
     r.perfectAfterRepair = same(fixed.grid, item.want);
     r.wrongRepair = fixed.changed.length > 0 && !r.perfectAfterRepair;
+    r.retake = fixed.status !== "solved" && checkRetake(grid, confidence).retake;
     r.timings = { ...scanned.timings, repair: repairMs };
   }
   return r;
@@ -141,6 +148,12 @@ function summarize(set: string, results: Result[]) {
     boardsRepaired: sum((r) => (r.repaired ? 1 : 0)),
     wrongRepairs: sum((r) => (r.wrongRepair ? 1 : 0)),
     misreads,
+    retakes: sum((r) => (r.retake ? 1 : 0)),
+    retakesOfPerfect: sum((r) => (r.retake && r.perfect ? 1 : 0)),
+    retakeBoards: results.filter((r) => r.retake).map((r) => r.name),
+    reviewedBoards: sum((r) => (r.found && !r.retake ? 1 : 0)),
+    reviewedPerfectAfterRepair: sum((r) => (r.found && !r.retake && r.perfectAfterRepair ? 1 : 0)),
+    misreadsReachingReview: sum((r) => (r.retake ? 0 : r.misreads)),
     caughtByConfidence: sum((r) => r.byConfidence),
     caughtByConflict: sum((r) => r.byConflict),
     caughtByEither: sum((r) => r.byEither),
@@ -169,6 +182,10 @@ function format(s: ReturnType<typeof summarize>): string {
       ` (${s.boardsRepaired} boards repaired, ${s.wrongRepairs} wrongly)`,
     `       misreads caught: (a) confidence < ${REVIEW} ${f(s.caughtByConfidence, s.misreads)},` +
       ` (b) conflicts ${f(s.caughtByConflict, s.misreads)}, (c) either ${f(s.caughtByEither, s.misreads)}`,
+    `       retake guard: ${s.retakes} boards sent back (${s.retakesOfPerfect} read perfectly)` +
+      (s.retakeBoards.length ? `: ${s.retakeBoards.join(", ")}` : "") +
+      `; reviewed boards perfect after repair ${f(s.reviewedPerfectAfterRepair, s.reviewedBoards)},` +
+      ` misreads reaching review ${s.misreadsReachingReview}`,
     `       orientation correct at 0/90/180/270: ${f(s.orientation[0], s.orientation[1])}` +
       (s.orientationFailures.length
         ? `; wrong or not found: ${s.orientationFailures.join(", ")}`

@@ -14,6 +14,8 @@
  * - synth-repair: synth-0103 from the full synthetic set (generate it first, see
  *   tests/fixtures/synthetic/sample/README.md), whose board scans with one confident
  *   misread (a 3 read as 4) that repair fixes; it exercises the "changed" UI.
+ * - synth-retake: synth-0118 from the full set, whose board is detected out of
+ *   position (45 cells misread, 17 in conflict); it exercises the retake guard.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -67,6 +69,13 @@ const SPECS: Spec[] = [
     dir: FULL,
     turns: 0,
     note: "one confident misread (3 read as 4) that repair fixes",
+  },
+  {
+    name: "synth-retake",
+    source: "synth-0118-rot-blur-noise-light",
+    dir: FULL,
+    turns: 0,
+    note: "board detected out of position: too many conflicts to review",
   },
 ];
 

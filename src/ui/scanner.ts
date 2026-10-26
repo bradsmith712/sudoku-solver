@@ -8,6 +8,7 @@ import { repair, type Change } from "../solver/repair";
 import type { SolveStatus } from "../solver/solver";
 import type { Grid, ScanResult } from "../types";
 import { decodePhoto } from "./photo";
+import { checkRetake, type RetakeCheck } from "./retake";
 
 export type ScanOutcome = {
   result: ScanResult;
@@ -18,6 +19,8 @@ export type ScanOutcome = {
   /** solve() status of `grid`. */
   status: SolveStatus;
   solution?: Grid;
+  /** Whether to ask for another photo instead of a review (never after a successful repair). */
+  retake: RetakeCheck;
 };
 
 let vision: Promise<typeof import("../vision/scan")> | undefined;
@@ -63,8 +66,10 @@ export async function scanPhoto(file: Blob): Promise<ScanOutcome> {
   const fixed = repair(result.grid, margin, second);
   measure("repair", t);
   measure("photo:scan-total", start);
+  const check = checkRetake(result.grid, result.confidence);
   return {
     result,
+    retake: fixed.status === "solved" ? { ...check, retake: false, reason: undefined } : check,
     grid: fixed.grid,
     changed: fixed.changed,
     status: fixed.status,

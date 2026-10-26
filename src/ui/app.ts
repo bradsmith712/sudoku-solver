@@ -6,7 +6,8 @@
  *  review   the scanned grid (highlight mode): low-confidence, conflicting and
  *           repaired cells marked; tap to edit; undo repairs; Solve
  *  solved   the solution drawn over the warped board (readonly)
- *  error    no board found, or the scanner failed to load; each with a retry
+ *  error    no board found, a scan too wrong to review (retake.ts), or the scanner
+ *           failed to load; each with a retry
  */
 import { findConflicts } from "../solver/conflicts";
 import type { Change } from "../solver/repair";
@@ -40,6 +41,17 @@ const REVIEW_HINTS: Record<Exclude<SolveStatus, "solved">, string> = {
     "These digits have no solution, so at least one was misread. Check the highlighted cells against your puzzle.",
   multiple:
     "These digits allow more than one solution, so a digit may be missing. Compare the grid with your puzzle.",
+};
+
+type ErrorKind = "no-board" | "unreadable" | "failed";
+
+const ERROR_TEXT: Record<ErrorKind, string> = {
+  "no-board":
+    "We couldn't find a sudoku grid in that photo. Make sure the whole grid is in view, flat and well lit, then try again.",
+  unreadable:
+    "We couldn't read this one: too many digits break the sudoku rules, which usually means the grid was found in the wrong place. Try again with the whole grid in view, flat and well lit.",
+  failed:
+    "Something went wrong while reading the photo. Check your connection and retry, or enter the puzzle by hand.",
 };
 
 const SCREEN_TEXT: Record<Screen, [string, string]> = {
@@ -87,6 +99,7 @@ export function mountApp(root: HTMLElement): void {
           <button type="button" class="primary" data-action="camera">Try another photo</button>
           <button type="button" data-action="upload">Upload image</button>
           <button type="button" data-action="retry" hidden>Retry</button>
+          <button type="button" data-action="review-anyway" hidden>Review anyway</button>
           <button type="button" data-action="manual">Enter manually</button>
         </div>
       </div>
@@ -266,6 +279,11 @@ export function mountApp(root: HTMLElement): void {
       drawOriginal(out.result.warped);
       if (out.status === "solved") setMessage("");
       else setMessage(REVIEW_HINTS[out.status], out.status === "multiple" ? "warning" : "error");
+      if (out.retake.retake) {
+        // Too many cells wrong to review one by one; the scan stays loaded for "Review anyway".
+        showError("unreadable");
+        return;
+      }
       show("review");
       try {
         performance.mark("review-shown");
@@ -274,14 +292,18 @@ export function mountApp(root: HTMLElement): void {
       }
     } catch (err) {
       const noBoard = (err as { code?: string }).code === "no_board_found";
-      $("[data-testid=error-text]").textContent = noBoard
-        ? "We couldn't find a sudoku grid in that photo. Make sure the whole grid is in view, flat and well lit, then try again."
-        : "Something went wrong while reading the photo. Check your connection and retry, or enter the puzzle by hand.";
-      $<HTMLButtonElement>('.error-card [data-action="retry"]').hidden = noBoard;
-      $("[data-testid=title]").dataset.kind = noBoard ? "no-board" : "failed";
-      show("error");
+      showError(noBoard ? "no-board" : "failed");
       if (!noBoard) console.error(err);
     }
+  }
+
+  function showError(kind: ErrorKind) {
+    $("[data-testid=error-text]").textContent = ERROR_TEXT[kind];
+    $<HTMLButtonElement>('.error-card [data-action="retry"]').hidden = kind !== "failed";
+    $<HTMLButtonElement>('.error-card [data-action="review-anyway"]').hidden =
+      kind !== "unreadable";
+    root.dataset.error = kind;
+    show("error");
   }
 
   function drawOriginal(image: ImageData) {
@@ -306,6 +328,7 @@ export function mountApp(root: HTMLElement): void {
     retry: () => {
       if (lastFile) void startScan(lastFile);
     },
+    "review-anyway": () => show("review"),
     rescan: () => pick(true),
     clear: () => {
       resetBoard();

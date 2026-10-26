@@ -89,7 +89,7 @@ Modules are independent and communicate only through these types: `src/solver`, 
 7. **Solution view:** original givens in one color, solved digits in another, drawn over the warped board. Stretch: project onto the original photo using the inverse homography.
 8. **Camera input:** a file input with `accept="image/*"` and `capture="environment"` to open the phone camera. Resize large images to a max of about 1024px before processing. A full-screen live camera view (see Design rules) is an enhancement on top of this and must fall back to the file input when camera access is unavailable or denied.
 9. **PWA:** web manifest, icons, service worker with offline caching of the app shell and model.
-10. **Errors:** friendly messages for no board found, invalid grid after scan, and unsolvable puzzle, each with a retry path.
+10. **Errors:** friendly messages for no board found, invalid grid after scan, and unsolvable puzzle, each with a retry path. A scan too wrong to review cell by cell (8 or more conflicting cells that repair cannot fix, or mean digit confidence under 0.8, usually a board detected out of position) gets "couldn't read this, try again" instead of the review screen, with a "Review anyway" option. Cut-offs set on synthetic and split=train data only (`src/ui/retake.ts`).
 
 ## Performance and size
 

@@ -17,7 +17,7 @@ const load = (name: string): Fixture =>
  */
 function misread(puzzle: Grid, cells: [number, number][]) {
   const grid = puzzle.map((row) => [...row]);
-  const margin = puzzle.map((row) => row.map((v) => (v ? 0.95 : 1)));
+  const margin: number[][] = puzzle.map((row) => row.map((v) => (v ? 0.95 : 1)));
   const second = puzzle.map((row) => row.map((v) => (v ? (v % 9) + 1 : 0)));
   cells.forEach(([r, c], i) => {
     const wrong = puzzle[r].find((v, cc) => v && cc !== c && v !== puzzle[r][c])!;

@@ -2,6 +2,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { solve } from "../../src/solver/solver";
+import {
+  isNegative,
+  listRealFixtures,
+  splitConflicts,
+} from "../../src/vision/__fixtures__/real";
 import { listPairs, type Pair } from "../../tools/synth/pairs";
 
 const HERE = new URL(".", import.meta.url).pathname;
@@ -63,8 +68,18 @@ describe("synthetic image fixtures", () => {
 });
 
 describe("real photo fixtures", () => {
-  const real = listPairs(join(HERE, "real"));
-  it.skipIf(real.length === 0)("every photo has a valid ground-truth grid", () => {
-    for (const p of real) expect(isGrid(p.truth.grid), p.name).toBe(true);
+  // Throws on unpaired files, bad metadata or a puzzleId in both splits (see real.ts).
+  const real = listRealFixtures(join(HERE, "real"));
+  const boards = real.filter((f) => !isNegative(f));
+
+  it.skipIf(real.length === 0)("never puts one puzzleId in both train and test", () => {
+    expect(splitConflicts(real)).toEqual([]);
   });
+
+  it.each(boards.map((f) => [f.name, f] as const))(
+    "%s grid has exactly one solution",
+    (_, f) => {
+      expect(solve(f.truth.grid!).status).toBe("solved");
+    },
+  );
 });

@@ -5,3 +5,4 @@ test-results
 .DS_Store
 tests/fixtures/synthetic/*
 !tests/fixtures/synthetic/sample/
+tests/fixtures/real/

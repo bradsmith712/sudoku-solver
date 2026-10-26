@@ -60,4 +60,8 @@ See `truth.ts` for the type.
 
 The board corners are verified against the camera model on every run. Use them to score board detection (Phase 4).
 
-Real photos in `tests/fixtures/real/` use the same pairing (`<name>.jpg` + `<name>.json`); only `grid` is required there. `listPairs()` in `pairs.ts` returns the pairs for any directory and throws on unpaired files. `tests/fixtures/image-fixtures.test.ts` validates the sample, the full set when it has been generated, and any real photos.
+Real photos in `tests/fixtures/real/` (local only, git-ignored; see `FIXTURES-README.md`) use the same pairing (`<name>.jpg` + `<name>.json`), searched in subfolders except `pending/`. Each JSON needs `puzzleId`, `split` (`train` or `test`) and `tags`, plus either a `grid` or `"expect": "no_board_found"` for a negative case. `listRealFixtures()` in `src/vision/__fixtures__/real.ts` loads them and throws on unpaired files, bad metadata, or a `puzzleId` in both splits. `listPairs()` in `pairs.ts` returns the pairs for any other directory and throws on unpaired files.
+
+`list-pairs.ts` prints split, puzzleId and tags for real photos and their counts per split and tag; `--split train` keeps only training photos. Never train on `test`, and keep every photo of a puzzle in one split.
+
+`tests/fixtures/image-fixtures.test.ts` validates the sample, the full set when it has been generated, and the real photos (one split per puzzle, every grid has exactly one solution). `src/vision/detect.fixtures.test.ts` prints real-set detection per split and per tag and checks that each negative case throws `ScanError("no_board_found")`. Use `tally()`/`formatTally()` from `real.ts` for the same breakdown of digit accuracy in `eval:vision`.

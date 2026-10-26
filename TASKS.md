@@ -40,8 +40,7 @@ Done when: a puzzle can be entered and solved entirely by hand in the browser.
 - [x] Add augmentations: perspective warp, rotation, blur, noise, uneven lighting, background clutter
 - [x] Generate at least 200 labeled images into `tests/fixtures/synthetic/` with ground-truth grids as JSON
 - [x] Commit a small sample (about 20) and ignore the rest in git; document how to regenerate
-- [ ] Add 10 or more real photos of printed puzzles supplied by the owner to `tests/fixtures/real/` with ground-truth JSON
-  - Blocked: waiting on the owner's photos. Add `<name>.jpg` plus `<name>.json` containing at least `{"grid": [[...9x9...]]}` (format in `tools/synth/README.md`); `tools/synth/list-pairs.ts` and `tests/fixtures/image-fixtures.test.ts` pick them up automatically.
+- [x] Add 10 or more real photos of printed puzzles supplied by the owner to `tests/fixtures/real/` with ground-truth JSON
 - [x] Owner: supply 390px mobile mockups for all eight screens as `docs/mockups-mobile.png`, with extra attention to screens 2, 4, 5 and 8 (needed before Phase 6)
 
 Done when: the fixture set exists and a script can list image and ground-truth pairs.
@@ -56,16 +55,20 @@ Done when: the fixture set exists and a script can list image and ground-truth p
 - [x] Test: on the synthetic set, at least 95% of boards are detected and aligned; save debug output images for failures
   - 239/240 on the full generated set, 20/20 on the committed sample. The one failure (synth-0118) has exact corners; the test's grid-line heuristic misreads its faint gray thin lines.
 - [x] Verify all OpenCV `Mat` objects are deleted (no memory growth over 100 scans)
+- [x] Detect boards on the real photos: every board in `tests/fixtures/real` found with grid lines within 15 px (a quarter cell), and `negative/book-229` throws `no_board_found`
+  - Detection downscales to 1024 px, snaps hull fits to the border before scoring, and requires a weak box grid on every accepted board. Fixed OpenCV.js `clone()` sharing pixels, which let `solidBoardMask` fill in the caller's mask.
+  - 17/17 found within 15 px; 14/17 within the strict 6 px. book-211, book-212 and book-512 (tag `curved-page`) bow 7-12 px, which a 4-corner warp cannot flatten; cell extraction handles it. The synthetic set keeps the 6 px, 95% bar. Real-photo pass/fail is cell accuracy in `eval:vision`.
 
 Done when: warped boards look correct on the synthetic set and on the real photos.
 
 ## Phase 5: Cell extraction and digit recognition
 
 - [ ] Split the warped board into 81 cells, crop margins to remove grid lines
+  - Find each cell's boundaries locally (e.g., the grid line positions near the expected 50 px spacing) rather than assuming a flat 50 px grid, so bowed pages work (`curved-page` photos are off by up to 12 px)
 - [ ] Implement blank vs. digit detection (e.g., ink fraction in the center region)
 - [ ] Write `tools/train/train.py`: generate digit crops from fonts with augmentation, train a small CNN, export `model.onnx`
 - [ ] Integrate onnxruntime-web, loading the model lazily; return digit and confidence per cell
-- [ ] Add `npm run eval:vision` reporting cell accuracy and full-board accuracy on synthetic and real sets
+- [ ] Add `npm run eval:vision` reporting cell accuracy and full-board accuracy on synthetic and real sets, with real results per split and per tag (`tally()` in `src/vision/__fixtures__/real.ts`); headline real numbers come from `split=test` only
 - [ ] Iterate on augmentation or model until targets are met: at least 98% cell accuracy (synthetic), at least 90% (real clean photos)
 - [ ] Check model size and keep it small (target under 1 MB)
 
@@ -77,6 +80,7 @@ Done when: `eval:vision` meets the thresholds in `SPEC.md`.
 - [ ] Refactor the Phase 2 grid into a shared `SudokuGrid` component with a `mode` prop (editable, highlight, read-only); reuse it for review, manual entry and the solution view; keep the Phase 2 e2e tests passing
 - [ ] Add responsive layout: single column under 640px, larger board at 640-1023px, two columns from 1024px; verify with Playwright screenshots at 390px, 768px and 1280px
 - [ ] Implement `scan(image)` combining detection, extraction, and recognition into a `ScanResult`
+- [ ] Resolve board orientation: run recognition at all 4 rotations of the warped board and choose the one that gives a valid grid with the highest confidence. Puzzles are 180-degree symmetric, so the blank pattern cannot decide it (book-211 and book-212 warp out rotated 90 degrees)
 - [ ] Add camera and upload input (`accept="image/*"` and `capture="environment"`), resizing to a max of about 1024px
 - [ ] Camera-first import screen: full-screen camera view with corner overlay and large shutter button, switch to photo library, Manual Entry as a secondary option, fallback to the file input if camera access fails; advance automatically to detection after capture
 - [ ] Detection screen with draggable crop corners and adjustment controls. This needs corners exposed from `src/vision`; if it requires a `src/types.ts` change, update `SPEC.md` and all users of the types, and tell the owner

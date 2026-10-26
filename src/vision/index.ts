@@ -7,4 +7,6 @@ export { ScanError, type ScanErrorCode } from "./errors";
 export type { Point } from "./geometry";
 export { loadOpenCv } from "./opencv";
 export { digitModelLoads, loadDigitModel, recognizeBoard } from "./recognize";
+export { rotateGrid, rotateImage, type QuarterTurns } from "./rotate";
+export { scan, scanDetailed, type ScanDetails, type ScanTimings } from "./scan";
 export { BOARD_SIZE, type WarpedBoard } from "./warp";

@@ -23,13 +23,18 @@ export const DETECT_MAX_SIDE = 1024;
 /**
  * Find the sudoku board in a photo and return it perspective-corrected to
  * 450x450. Throws ScanError("no_board_found") if no board-like quadrilateral is
- * found. Loads OpenCV.js on first use.
+ * found. Loads OpenCV.js on first use. If `timings` is given, the milliseconds
+ * spent finding the board and warping it are written to it (OpenCV load excluded).
  */
-export async function detectBoard(image: ImageData): Promise<DetectedBoard> {
+export async function detectBoard(
+  image: ImageData,
+  timings?: { detect?: number; warp?: number },
+): Promise<DetectedBoard> {
   if (Math.min(image.width, image.height) < MIN_IMAGE_SIDE) {
     throw new ScanError("no_board_found", "Image is too small to contain a board");
   }
   const cv = await loadOpenCv();
+  const t0 = performance.now();
   const rgba = cv.matFromImageData(image);
   const scale = Math.min(1, DETECT_MAX_SIDE / Math.max(image.width, image.height));
   let small;
@@ -44,7 +49,13 @@ export async function detectBoard(image: ImageData): Promise<DetectedBoard> {
     const found = findBoardQuad(cv, binary);
     if (!found) throw new ScanError("no_board_found", "No sudoku board found in the image");
     const corners = found.map((p) => ({ x: p.x / scale, y: p.y / scale }));
-    return { ...warpBoard(cv, rgba, corners), corners };
+    const t1 = performance.now();
+    const warped = warpBoard(cv, rgba, corners);
+    if (timings) {
+      timings.detect = t1 - t0;
+      timings.warp = performance.now() - t1;
+    }
+    return { ...warped, corners };
   } finally {
     rgba.delete();
     small?.delete();

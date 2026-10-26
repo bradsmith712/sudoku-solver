@@ -12,6 +12,7 @@ import { listFixtures, readJpeg } from "./__fixtures__/fixtures";
 import { detectBoard, warpBoardAt } from "./board";
 import { ScanError } from "./errors";
 import { loadOpenCv, type CV } from "./opencv";
+import { scan } from "./scan";
 
 const live = new Set<unknown>();
 class CountingFinalizationGroup {
@@ -107,5 +108,18 @@ describe("OpenCV memory", () => {
     }
     expect(heap.HEAPU8.length).toBe(heapSize);
     expect(heapTop()).toBe(top);
+  }, 120_000);
+
+  it("deletes every Mat across full scans (detect, warp, four reads)", async () => {
+    const images = listFixtures(BOARDS)
+      .slice(0, 4)
+      .map((f) => readJpeg(f.imagePath));
+    const run = async () => {
+      for (const image of images) await scan(image).catch(() => undefined);
+    };
+    await run(); // warm-up, as above
+    const before = live.size;
+    for (let i = 0; i < 5; i++) await run();
+    expect(live.size).toBe(before);
   }, 120_000);
 });

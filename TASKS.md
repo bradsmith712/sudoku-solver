@@ -88,8 +88,10 @@ Done when: `eval:vision` meets the thresholds in `SPEC.md`.
 - [x] Before building screens, check `docs/mockups.png` and the owner's 390px mobile mockups (`docs/mockups-mobile.png`) if present; follow the Design section of `SPEC.md`
 - [x] Refactor the Phase 2 grid into a shared `SudokuGrid` component with a `mode` prop (editable, highlight, read-only); reuse it for review, manual entry and the solution view; keep the Phase 2 e2e tests passing
 - [x] Add responsive layout: single column under 640px, larger board at 640-1023px, two columns from 1024px; verify with Playwright screenshots at 390px, 768px and 1280px
-- [ ] Implement `scan(image)` combining detection, extraction, and recognition into a `ScanResult`
-- [ ] Resolve board orientation: run recognition at all 4 rotations of the warped board and choose the one that gives a valid grid with the highest confidence. Puzzles are 180-degree symmetric, so the blank pattern cannot decide it (book-211 and book-212 warp out rotated 90 degrees)
+- [x] Implement `scan(image)` combining detection, extraction, and recognition into a `ScanResult`
+  - `src/vision/scan.ts`; `scanDetailed` also returns the chosen turn, each turn's score and per-stage timings for the eval. EXIF stays with the decoder (browser, `readJpeg`).
+- [x] Resolve board orientation: run recognition at all 4 rotations of the warped board and choose the one that gives a valid grid with the highest confidence. Puzzles are 180-degree symmetric, so the blank pattern cannot decide it (book-211 and book-212 warp out rotated 90 degrees)
+  - All four quarter turns are read with one ONNX session (`scan.test.ts` checks one load). Correct on the three test samples and on all 10 split=train photos at every photo rotation. With EXIF applied, book-211 and book-212 already warp upright; the rotation tests turn the photos to exercise this.
 - [ ] Add camera and upload input (`accept="image/*"` and `capture="environment"`), resizing to a max of about 1024px
 - [ ] Build the review screen: show the recognized grid, highlight cells under 0.9 confidence, tap to edit
 - [ ] Wire review to solve to solution view, with the solution drawn over the warped board

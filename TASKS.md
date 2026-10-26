@@ -98,9 +98,12 @@ Done when: `eval:vision` meets the thresholds in `SPEC.md`.
   - Pool of 10, checked on synthetic + split=train only (any pool from 2 to 20 gave the same result there). End to end at 1024 px, 6 of 250 boards are misread, all invalid; repair fixes the one with a single misread (synth-0103, 3 read as 4) and makes no wrong repair. The other five have 6 to 45 misreads each, beyond three swaps.
 - [x] Add camera and upload input (`accept="image/*"` and `capture="environment"`), resizing to a max of about 1024px
   - `src/ui/photo.ts`: Scan opens a file input with `capture="environment"`, Upload a plain one; decoded through `<img>` so EXIF orientation applies (like `readJpeg` in tests), then drawn to a canvas at most 1024 px on its longer side. `src/ui/scanner.ts` lazy-loads the vision chunk, calls `scan()` and `repair()`, and records performance marks.
-- [ ] Build the review screen: show the recognized grid, highlight cells under 0.9 confidence, tap to edit
-- [ ] Wire review to solve to solution view, with the solution drawn over the warped board
-- [ ] Add friendly error states and retry for no board found, invalid grid, and unsolvable puzzle
+- [x] Build the review screen: show the recognized grid, highlight cells under 0.9 confidence, tap to edit
+  - Review marks low confidence (amber, calibrated confidence under 0.9), repeated digits (red, `findConflicts`) and cells repair changed (purple outline and dot, with "Undo this cell" and "Undo all changes"); editing a cell clears its marks. "Show scanned photo" shows the warped board. Screenshots at 390, 768 and 1280 px in `tests/e2e/layout.spec.ts`.
+- [x] Wire review to solve to solution view, with the solution drawn over the warped board
+  - Solved digits are drawn in blue on the warped board image; the givens show through from the photo.
+- [x] Add friendly error states and retry for no board found, invalid grid, and unsolvable puzzle
+  - No board found: error card with Try another photo / Upload image / Enter manually. Scanner load failure: also Retry. Invalid, unsolvable and multiple-solution grids stay on review with a message and the cells highlighted, plus New photo.
 - [ ] Playwright test: upload a fixture photo, correct one cell, solve, assert the solution is valid
 - [ ] Measure scan time; optimize until under 3 seconds on a mid-range phone for a 1024px image
 

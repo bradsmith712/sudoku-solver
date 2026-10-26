@@ -9,3 +9,4 @@ tests/fixtures/real/
 tools/train/.venv/
 tools/train/data/
 tools/train/out/
+.perf-baseline/

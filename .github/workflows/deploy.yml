@@ -31,11 +31,20 @@ jobs:
         env:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}/
       - run: npx playwright install --with-deps chromium
+      # Perf numbers from the last successful run, for the CI regression check.
+      - uses: actions/cache@v4
+        with:
+          path: .perf-baseline
+          key: perf-4x-${{ github.run_id }}
+          restore-keys: perf-4x-
       # End-to-end tests against the production build under the Pages subpath.
       # This rebuilds dist/ with the same BASE_PATH, so the tested build is the one deployed.
       - run: npm run test:e2e
         env:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+          PERF_BASELINE: .perf-baseline/4x.json
+      # Saved by actions/cache at the end of a successful job: the next run's baseline.
+      - run: mkdir -p .perf-baseline && cp test-results/perf/4x.json .perf-baseline/
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

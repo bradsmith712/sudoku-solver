@@ -119,11 +119,27 @@ Misreads are the main way this app fails, so they are handled in several layers.
 
 These cut-offs were set on synthetic and `split=train` data only. The real photos haven't produced a misread yet, so catch rates on real photos are still unmeasured.
 
+## Performance
+
+SPEC budget: from photo to review screen in under 3 s for a 1024 px image on a mid-range phone. These timings come from `tests/e2e/perf.spec.ts`. Each one names the device and the throttling used.
+
+- **Cold via Upload:** the user's real path. They tap Upload, which starts loading the vision code, spend 2 s picking a photo, and the timer runs from choosing the photo to the review screen.
+- **Warm:** a later scan on the same page.
+
+| Device and setting                                         | Cold via Upload  | Warm   | Counts toward the budget? |
+| ---------------------------------------------------------- | ---------------- | ------ | ------------------------- |
+| MacBook Air (M4), Chromium, 4x CPU throttling, local build | 1.0 s            | 0.76 s | Yes (must be under 3 s)   |
+| GitHub Actions `ubuntu-latest` runner, 4x CPU throttling   | 3.6 s            | –      | No, informational only    |
+| Real phone                                                 | not yet measured | –      | –                         |
+
+- **The 3 s budget is enforced** locally and in `npm run test:live` against the deployed site.
+- **GitHub runners are excluded.** They are several times slower than the M4 before any throttling is applied, so 4x throttling there is much slower than a mid-range phone. CI records its timings in the job summary. It fails only if a cold scan via Upload takes more than 6 s, or more than 1.5x as long as the previous successful run.
+
 ## Why client-side
 
 - **Cost.** The OCR is a 361 KB CNN and a ~10 MB computer-vision library running on the phone. Hosting is a static site on GitHub Pages, so there's no inference server, no GPU and no per-scan bill.
 - **Privacy.** Photos never leave the device, because there is no server to send them to.
-- **Latency and offline use.** Scan to review takes about 1 s on a 4x-throttled desktop CPU, standing in for a mid-range phone. Once the files are cached, scanning works on a plane.
+- **Latency and offline use.** Scan to review takes about 1 s on a MacBook Air (M4) with Chromium throttled to 4x CPU, the stand-in for a mid-range phone (see Performance). Once the files are cached, scanning works on a plane.
 - **Fit for the problem.** Printed digits on a known 9x9 grid are a narrow task. Classical geometry (OpenCV) plus a tiny classifier is enough, and a review screen covers the rest. A cloud vision model would add cost, a dependency and a privacy question without fixing the real failure, which is confident misreads.
 - **The trade-off.** The first scan downloads about 8 MB, and onnxruntime runs single-threaded on hosts without cross-origin isolation. Both are measured; see `tests/e2e/perf.spec.ts`.
 

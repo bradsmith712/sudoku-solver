@@ -16,4 +16,14 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npx playwright install --with-deps chromium
+      # Perf numbers from the last successful run, for the CI regression check.
+      - uses: actions/cache@v4
+        with:
+          path: .perf-baseline
+          key: perf-4x-${{ github.run_id }}
+          restore-keys: perf-4x-
       - run: npm run test:e2e
+        env:
+          PERF_BASELINE: .perf-baseline/4x.json
+      # Saved by actions/cache at the end of a successful job: the next run's baseline.
+      - run: mkdir -p .perf-baseline && cp test-results/perf/4x.json .perf-baseline/

@@ -53,6 +53,13 @@ Client-side web app: photo of a sudoku in, solved grid out. Full requirements ar
 - Test file next to the code it tests (`solver.ts`, `solver.test.ts`) except fixtures and e2e.
 - Name test fixtures descriptively (`easy-01.json`, `skewed-30deg.png`).
 
+## Plans
+
+- Before coding, list the files you'll touch, the commands that verify each task, and anything you need from me (photos, decisions).
+- Never use split=test photos to tune, select, or set thresholds.
+- Flag any change to src/types.ts or SPEC.md thresholds in the plan.
+- Say what could make the plan fail and what you'd do then.
+
 ## When you make the same mistake twice
 
 Add a line to this file or propose a hook or skill so it does not happen a third time.

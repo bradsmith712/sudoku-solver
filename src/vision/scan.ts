@@ -107,6 +107,8 @@ export async function scanDetailed(image: ImageData): Promise<ScanDetails> {
     result: {
       grid: read.grid,
       confidence: read.confidence,
+      second: read.second,
+      margin: read.margin,
       warped,
       homography: rotateHomography(board.homography, best.turns, BOARD_SIZE),
     },

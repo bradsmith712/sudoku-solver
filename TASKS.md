@@ -92,6 +92,8 @@ Done when: `eval:vision` meets the thresholds in `SPEC.md`.
   - `src/vision/scan.ts`; `scanDetailed` also returns the chosen turn, each turn's score and per-stage timings for the eval. EXIF stays with the decoder (browser, `readJpeg`).
 - [x] Resolve board orientation: run recognition at all 4 rotations of the warped board and choose the one that gives a valid grid with the highest confidence. Puzzles are 180-degree symmetric, so the blank pattern cannot decide it (book-211 and book-212 warp out rotated 90 degrees)
   - All four quarter turns are read with one ONNX session (`scan.test.ts` checks one load). Correct on the three test samples and on all 10 split=train photos at every photo rotation. With EXIF applied, book-211 and book-212 already warp upright; the rotation tests turn the photos to exercise this.
+- [x] Calibrate digit confidence: temperature scaling fitted on the held-out-font validation set; return the runner-up digit and top-two margin (optional `second` and `margin` in `ScanResult`)
+  - T = 1.62 (`src/vision/model/calibration.json`). Validation ECE 0.0049 -> 0.0043. Synthetic boards (labelled-corner warps): ECE 0.0046 -> 0.0029, misreads under 0.9 7/41 -> 15/41, correct cells under 0.9 0.05 -> 0.17 per board. Informational: a margin flag with the same 57-cell budget also catches 15/41.
 - [ ] Add camera and upload input (`accept="image/*"` and `capture="environment"`), resizing to a max of about 1024px
 - [ ] Build the review screen: show the recognized grid, highlight cells under 0.9 confidence, tap to edit
 - [ ] Wire review to solve to solution view, with the solution drawn over the warped board

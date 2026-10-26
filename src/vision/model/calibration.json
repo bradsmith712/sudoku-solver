@@ -1,0 +1,10 @@
+{
+  "temperature": 1.6191,
+  "fittedOn": "held-out-font validation set (tools/train/train.py --dump-val)",
+  "n": 6000,
+  "accuracy": 0.9887,
+  "eceBefore": 0.0049,
+  "eceAfter": 0.0043,
+  "nllBefore": 0.0545,
+  "nllAfter": 0.0462
+}

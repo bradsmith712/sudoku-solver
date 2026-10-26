@@ -4,7 +4,7 @@ import { BLANK_FLOOR, BLANK_SURE, MIN_BLOB, blankConfidence } from "./blank";
 import { CELL_SIZE, type Cell } from "./cells";
 import { toImageData } from "./image";
 import { loadOpenCv, type CV } from "./opencv";
-import { digitModelLoads, recognizeBoard } from "./recognize";
+import { TEMPERATURE, digitModelLoads, recognizeBoard, softmax } from "./recognize";
 import { BOARD_SIZE } from "./warp";
 
 let cv: CV;
@@ -59,6 +59,39 @@ describe("recognizeBoard", () => {
     await recognizeBoard(board(7).img);
     expect(second).toEqual(first);
     expect(digitModelLoads()).toBe(1);
+  });
+});
+
+describe("calibration", () => {
+  it("uses a fitted temperature that softens the softmax without changing the winner", () => {
+    expect(TEMPERATURE).toBeGreaterThan(0);
+    const logits = [4, 1, 0.5, 0, 0, 0, 0, 0, -1];
+    const raw = softmax(logits, 1);
+    const cal = softmax(logits, 2);
+    expect(raw.reduce((a, b) => a + b, 0)).toBeCloseTo(1);
+    expect(cal.indexOf(Math.max(...cal))).toBe(raw.indexOf(Math.max(...raw)));
+    expect(cal[0]).toBeLessThan(raw[0]);
+  });
+
+  it("returns the runner-up digit and top-two margin on digit cells only", async () => {
+    const { img } = board(8);
+    const res = await recognizeBoard(img);
+    const raw = await recognizeBoard(img, 1);
+    expect(raw.grid).toEqual(res.grid);
+    res.grid.forEach((row, r) =>
+      row.forEach((v, c) => {
+        const m = res.margin[r][c];
+        if (!v) {
+          expect(res.second[r][c]).toBe(0);
+          expect(m).toBe(1);
+          return;
+        }
+        expect(res.second[r][c]).not.toBe(v);
+        expect(res.second[r][c]).toBeGreaterThanOrEqual(1);
+        expect(m).toBeGreaterThanOrEqual(0);
+        expect(m).toBeLessThanOrEqual(res.confidence[r][c]);
+      }),
+    );
   });
 });
 

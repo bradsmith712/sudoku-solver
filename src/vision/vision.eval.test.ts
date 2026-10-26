@@ -13,7 +13,9 @@
  * (2) printed-digit cells read correctly; (3) boards read perfectly. Targets: synthetic
  * (1) >= 98% and (3) >= 90%; real split=test (1) >= 90%. Also: true-blank cells under
  * 0.9 confidence per board, the share of missed digits under 0.9 (what the review
- * screen would flag), and the 10 most frequent confusions. Writes
+ * screen would flag), and the 10 most frequent confusions. Calibration: ECE, misreads
+ * under 0.9 and correct cells under 0.9 per board, at T = 1 and at the shipped
+ * temperature, plus (information only) a margin flag with the same cell budget. Writes
  * test-results/vision-eval/report.json and fails if a target is missed.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -21,9 +23,10 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { listFixtures, readJpeg } from "./__fixtures__/fixtures";
+import { expectedCalibrationError, type Prediction } from "./__fixtures__/calibration";
 import { isNegative, listRealFixtures, tally, type Score } from "./__fixtures__/real";
 import { detectBoard, warpBoardAt } from "./board";
-import { recognizeBoard } from "./recognize";
+import { recognizeBoard, TEMPERATURE } from "./recognize";
 import type { Grid } from "../types";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -37,8 +40,102 @@ type Board = {
   truth: Score["truth"];
   want: Grid;
   got: Grid;
+  /** Calibrated (temperature-scaled) confidence, as scan() returns it. */
   confidence: number[][];
+  /** The same read at temperature 1 (before calibration). */
+  rawConfidence: number[][];
+  /** Calibrated top-two margin; 1 on blank cells. */
+  margin: number[][];
 };
+
+/** Read a warped board at the shipped temperature and at T = 1. */
+async function read(warped: ImageData) {
+  const [cal, raw] = [await recognizeBoard(warped), await recognizeBoard(warped, 1)];
+  return {
+    got: cal.grid,
+    confidence: cal.confidence,
+    rawConfidence: raw.confidence,
+    margin: cal.margin,
+  };
+}
+
+type Calibration = {
+  /** ECE over digit predictions (cells the model classified). */
+  ece: number;
+  misreads: number;
+  /** Misreads under the 0.9 review threshold. */
+  misreadsFlagged: number;
+  /** Correctly read cells (digits and blanks) under 0.9, per board. */
+  correctFlaggedPerBoard: number;
+};
+
+function calibration(boards: Board[], conf: (b: Board) => number[][]): Calibration {
+  const preds: Prediction[] = [];
+  let misreads = 0;
+  let flagged = 0;
+  let correctFlagged = 0;
+  for (const b of boards) {
+    const c = conf(b);
+    b.want.forEach((row, r) =>
+      row.forEach((want, col) => {
+        const got = b.got[r][col];
+        const low = c[r][col] < REVIEW;
+        if (got) preds.push({ confidence: c[r][col], correct: got === want });
+        if (got !== want) {
+          misreads++;
+          if (low) flagged++;
+        } else if (low) correctFlagged++;
+      }),
+    );
+  }
+  return {
+    ece: expectedCalibrationError(preds),
+    misreads,
+    misreadsFlagged: flagged,
+    correctFlaggedPerBoard: correctFlagged / Math.max(1, boards.length),
+  };
+}
+
+/**
+ * Informational only (nothing ships on it): a margin flag set to mark as many cells as
+ * calibrated confidence < 0.9 does, and how many misreads it would catch.
+ */
+function marginFlag(boards: Board[]) {
+  const cells = boards.flatMap((b) =>
+    b.want.flatMap((row, r) =>
+      row.map((want, c) => ({
+        margin: b.margin[r][c],
+        low: b.confidence[r][c] < REVIEW,
+        wrong: b.got[r][c] !== want,
+      })),
+    ),
+  );
+  const budget = cells.filter((x) => x.low).length;
+  const sorted = [...cells].sort((a, b) => a.margin - b.margin);
+  const flagged = sorted.slice(0, budget);
+  return {
+    cutoff: budget ? sorted[budget - 1].margin : 0,
+    flaggedCells: budget,
+    misreadsCaught: flagged.filter((x) => x.wrong).length,
+    misreads: cells.filter((x) => x.wrong).length,
+  };
+}
+
+function calibrationLines(name: string, boards: Board[]): string[] {
+  const before = calibration(boards, (b) => b.rawConfidence);
+  const after = calibration(boards, (b) => b.confidence);
+  const m = marginFlag(boards);
+  const row = (label: string, c: Calibration) =>
+    `       ${label.padEnd(17)} ECE ${c.ece.toFixed(4)}  misreads under ${REVIEW}: ` +
+    `${c.misreadsFlagged}/${c.misreads}  correct cells under ${REVIEW} per board: ${c.correctFlaggedPerBoard.toFixed(2)}`;
+  return [
+    `[eval] ${name} calibration:`,
+    row("before (T = 1)", before),
+    row(`after (T = ${TEMPERATURE})`, after),
+    `       margin flag (info only, same ${m.flaggedCells} cells flagged, margin <= ${m.cutoff.toFixed(3)}): ` +
+      `catches ${m.misreadsCaught}/${m.misreads} misreads`,
+  ];
+}
 
 type Summary = {
   boards: number;
@@ -156,13 +253,11 @@ async function syntheticBoards(): Promise<{ set: string; boards: Board[] }> {
   for (const f of fixtures) {
     const corners = f.truth.corners!.map(([x, y]) => ({ x, y }));
     const { warped } = await warpBoardAt(readJpeg(f.imagePath), corners);
-    const { grid, confidence } = await recognizeBoard(warped);
     boards.push({
       name: f.name,
       truth: { tags: f.truth.tags ?? [] },
       want: f.truth.grid,
-      got: grid,
-      confidence,
+      ...(await read(warped)),
     });
   }
   return { set, boards };
@@ -173,8 +268,7 @@ async function realBoards(): Promise<Board[]> {
   for (const f of listRealFixtures(join(ROOT, "tests/fixtures/real"))) {
     if (isNegative(f) || !SPLITS.includes(f.truth.split)) continue;
     const { warped } = await detectBoard(readJpeg(f.imagePath));
-    const { grid, confidence } = await recognizeBoard(warped);
-    boards.push({ name: f.name, truth: f.truth, want: f.truth.grid!, got: grid, confidence });
+    boards.push({ name: f.name, truth: f.truth, want: f.truth.grid!, ...(await read(warped)) });
   }
   return boards;
 }
@@ -203,9 +297,19 @@ describe.skipIf(!process.env.EVAL_VISION)("eval:vision", () => {
     };
 
     const syn = add(synthetic.set, synthetic.boards)!;
+    lines.push(...calibrationLines(synthetic.set, synthetic.boards));
+    report.calibration = {
+      temperature: TEMPERATURE,
+      [synthetic.set]: {
+        before: calibration(synthetic.boards, (b) => b.rawConfidence),
+        after: calibration(synthetic.boards, (b) => b.confidence),
+        marginFlag: marginFlag(synthetic.boards),
+      },
+    };
     lines.push(table(`[eval] ${synthetic.set}`, synthetic.boards));
     for (const split of ["train", "test"])
-      if (SPLITS.includes(split)) add(`real ${split}`, bySplit(split));
+      if (SPLITS.includes(split) && add(`real ${split}`, bySplit(split)))
+        lines.push(...calibrationLines(`real ${split}`, bySplit(split)));
     if (real.length) lines.push(table("[eval] real", real));
     console.log(lines.join("\n\n"));
     mkdirSync(OUT_DIR, { recursive: true });

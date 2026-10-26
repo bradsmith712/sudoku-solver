@@ -66,9 +66,11 @@ Screens 6 and 8 (activity log, step-by-step) are not in the v1 scope; see Stretc
 type Grid = number[][];            // 9x9, 0 = blank, 1-9 = digit
 type ScanResult = {
   grid: Grid;
-  confidence: number[][];          // 9x9, 0-1 per cell (digit: model softmax; blank: ink-rule margin)
+  confidence: number[][];          // 9x9, 0-1 per cell (digit: temperature-scaled model softmax; blank: ink-rule margin)
   warped: ImageData;               // top-down 450x450 board image
   homography?: number[];           // optional, for projecting the solution back onto the photo
+  second?: Grid;                   // optional, runner-up digit per digit cell; 0 on blanks
+  margin?: number[][];             // optional, calibrated top-1 minus top-2 probability; 1 on blanks
 };
 solve(grid: Grid): { status: "solved" | "invalid" | "unsolvable" | "multiple"; solution?: Grid }
 scan(image: ImageData): Promise<ScanResult>   // throws ScanError("no_board_found") if detection fails
@@ -82,8 +84,8 @@ Modules are independent and communicate only through these types: `src/solver`, 
 2. **Manual entry:** a 9x9 editable grid works without any camera or vision code.
 3. **Board detection:** find the largest quadrilateral contour, order its corners, apply a perspective transform to a square board image. **Orientation:** `scan` takes an image already turned upright per its EXIF orientation (browsers and the test decoder apply it when decoding). The warped board can still be sideways or upside down, and puzzles are 180-degree symmetric, so `scan` reads the board at all four quarter turns with one model session and keeps the turn whose grid has no repeated digit, then the highest mean confidence over digit cells. `homography` maps the photo onto the returned, upright `warped` board.
 4. **Cell extraction:** split the warped board into 81 cells, strip grid lines, and decide blank vs. digit before classification.
-5. **Digit recognition:** classify each non-blank cell with the ONNX model, returning a digit and a confidence.
-6. **Review screen:** show the recognized grid, highlight low-confidence cells (below 0.9), and let the user tap to correct before solving. Blank and digit cells share the same 0-1 confidence scale and 0.9 threshold, but the values come from different places: a digit's confidence is the CNN's softmax probability for the chosen digit; a blank's comes from the blank-vs-digit ink rule (how far the largest ink blob in the cell centre is below the digit threshold), not from the CNN, which only sees cells already judged to hold a digit. Treat both the same on the review screen.
+5. **Digit recognition:** classify each non-blank cell with the ONNX model, returning a digit and a confidence, plus the runner-up digit and the top-two margin (`second`, `margin`). Confidence is calibrated by temperature scaling: softmax(logits / T), with T fitted on the held-out-font validation set (`tools/train/calibrate.ts`, stored in `src/vision/model/calibration.json`), never on photos. Scaling does not change which digit wins.
+6. **Review screen:** show the recognized grid, highlight low-confidence cells (below 0.9), and let the user tap to correct before solving. Blank and digit cells share the same 0-1 confidence scale and 0.9 threshold, but the values come from different places: a digit's confidence is the CNN's calibrated softmax probability for the chosen digit; a blank's comes from the blank-vs-digit ink rule (how far the largest ink blob in the cell centre is below the digit threshold), not from the CNN, which only sees cells already judged to hold a digit. Treat both the same on the review screen.
 7. **Solution view:** original givens in one color, solved digits in another, drawn over the warped board. Stretch: project onto the original photo using the inverse homography.
 8. **Camera input:** a file input with `accept="image/*"` and `capture="environment"` to open the phone camera. Resize large images to a max of about 1024px before processing. A full-screen live camera view (see Design rules) is an enhancement on top of this and must fall back to the file input when camera access is unavailable or denied.
 9. **PWA:** web manifest, icons, service worker with offline caching of the app shell and model.

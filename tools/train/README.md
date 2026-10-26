@@ -35,6 +35,20 @@ tools/train/.venv/bin/python tools/train/train.py --help     # options
 - Model input: `[N, 1, 32, 32]` float, 1 - flattened brightness (ink = 1). Output:
   9 logits for digits 1-9.
 
+## Confidence calibration
+
+After training, refit the softmax temperature that `recognize.ts` applies:
+
+```sh
+tools/train/.venv/bin/python tools/train/train.py --dump-val tools/train/data/val-crops.bin
+npx vite-node tools/train/calibrate.ts
+```
+
+`--dump-val` re-renders the held-out-font validation set with the same seed training
+uses; `calibrate.ts` runs the shipped model through onnxruntime-web, fits T by
+minimising NLL, and writes `src/vision/model/calibration.json` with ECE and NLL before
+and after. Photos and the synthetic boards are never used to fit it.
+
 ## Real-photo crops
 
 `--real-crops path/to/crops.json` adds crops from the owner's photos. The file must

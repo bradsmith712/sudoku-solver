@@ -9,7 +9,8 @@ the local paper brightness from a 15 px grey-level closing, crop between the cel
 lines inset 15%, resample to 32x32. The model sees 1 - brightness (ink = 1).
 
 Validation uses fonts held out of training, so model selection never looks at real
-photos. --real-crops adds crops dumped from split=train photos only (never test).
+photos. --dump-val writes that validation set for tools/train/calibrate.ts, which fits
+the confidence temperature on it. --real-crops adds crops dumped from split=train photos only (never test).
 """
 
 from __future__ import annotations
@@ -286,6 +287,7 @@ def main() -> None:
     ap.add_argument("--real-weight", type=int, default=20, help="times each real crop is repeated")
     ap.add_argument("--out", type=Path, default=MODEL_PATH)
     ap.add_argument("--parity-fixture", type=Path, help="write one raw cell + its crop for the TS parity test, then exit")
+    ap.add_argument("--dump-val", type=Path, help="write the held-out-font validation crops for calibrate.ts, then exit")
     args = ap.parse_args()
 
     random.seed(args.seed)
@@ -302,6 +304,11 @@ def main() -> None:
 
     if args.parity_fixture:
         write_parity_fixture(args.parity_fixture, train_fonts)
+        return
+
+    if args.dump_val:
+        x_val, y_val = make_set(args.seed + 1, val_fonts, val_fonts, args.val_samples, args.workers)
+        write_val_dump(args.dump_val, x_val, y_val)
         return
 
     t = time.time()
@@ -354,6 +361,20 @@ def export(model: nn.Module, out: Path) -> None:
     onnx.checker.check_model(onnx.load(str(out)))
     if out.stat().st_size >= MAX_MODEL_BYTES:
         sys.exit(f"model is {out.stat().st_size} bytes; must stay under {MAX_MODEL_BYTES}")
+
+
+def write_val_dump(path: Path, crops: np.ndarray, labels: np.ndarray) -> None:
+    """The validation set exactly as main() renders it (same seed), for temperature fitting.
+
+    Layout, little-endian: uint32 N; N uint8 digits (1-9); zero padding to a multiple of
+    4 bytes; N x 32 x 32 float32 crops (1 = paper, as cells.ts produces them).
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    n = len(labels)
+    head = np.array([n], "<u4").tobytes() + (labels + 1).astype(np.uint8).tobytes()
+    head += bytes(-len(head) % 4)
+    path.write_bytes(head + crops.astype("<f4").tobytes())
+    print(f"wrote {n} held-out-font validation crops to {path}")
 
 
 def write_parity_fixture(path: Path, fonts) -> None:

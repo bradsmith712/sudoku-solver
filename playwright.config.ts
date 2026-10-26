@@ -7,6 +7,8 @@ const ORIGIN = "http://localhost:4173";
 
 export default defineConfig({
   testDir: "tests/e2e",
+  // In CI, failures also become check-run annotations (readable without log access).
+  reporter: process.env.CI ? [["github"], ["list"]] : "list",
   use: { baseURL: `${ORIGIN}${BASE_PATH}` },
   webServer: {
     command: "npm run build && npx vite preview --port 4173 --strictPort",

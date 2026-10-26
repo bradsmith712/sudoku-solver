@@ -113,6 +113,23 @@ describe("findBoardQuad", () => {
   it("returns null when the only quadrilateral is too small", () => {
     expect(detect([[p(10, 10), p(80, 10), p(80, 80), p(10, 80)]])).toBeNull();
   });
+
+  it("does not modify the mask it is given, including on the solid-mask retry", () => {
+    // A circle has no box grid, so this takes the solidBoardMask path, which fills holes
+    // in a copy of the mask. OpenCV.js clone() shares pixels, so a clone() there leaked.
+    const scene = blankScene(cv, 640, 480, [200, 190, 180, 255]);
+    let bin: Mat | undefined;
+    try {
+      cv.circle(scene, new cv.Point(320, 240), 200, [0, 0, 0, 255], 6);
+      bin = preprocess(cv, scene);
+      const before = Uint8Array.from(bin.data);
+      findBoardQuad(cv, bin);
+      expect(Uint8Array.from(bin.data)).toEqual(before);
+    } finally {
+      scene.delete();
+      bin?.delete();
+    }
+  });
 });
 
 describe("edgeSupport", () => {

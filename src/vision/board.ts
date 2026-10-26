@@ -12,6 +12,13 @@ export type DetectedBoard = WarpedBoard & {
 
 /** Smallest image side worth searching; anything smaller cannot hold a readable board. */
 const MIN_IMAGE_SIDE = 64;
+/**
+ * Detection runs on a copy at most this long on its longer side. Full-resolution phone
+ * photos (2000-6000 px) make paper grain several pixels wide, which the adaptive
+ * threshold turns into speckle that swallows the board outline; area downscaling
+ * averages it away. The warp still samples the full-resolution image.
+ */
+export const DETECT_MAX_SIDE = 1024;
 
 /**
  * Find the sudoku board in a photo and return it perspective-corrected to
@@ -24,14 +31,23 @@ export async function detectBoard(image: ImageData): Promise<DetectedBoard> {
   }
   const cv = await loadOpenCv();
   const rgba = cv.matFromImageData(image);
+  const scale = Math.min(1, DETECT_MAX_SIDE / Math.max(image.width, image.height));
+  let small;
   let binary;
   try {
-    binary = preprocess(cv, rgba);
-    const corners = findBoardQuad(cv, binary);
-    if (!corners) throw new ScanError("no_board_found", "No sudoku board found in the image");
+    if (scale < 1) {
+      small = new cv.Mat();
+      const size = new cv.Size(Math.round(image.width * scale), Math.round(image.height * scale));
+      cv.resize(rgba, small, size, 0, 0, cv.INTER_AREA);
+    }
+    binary = preprocess(cv, small ?? rgba);
+    const found = findBoardQuad(cv, binary);
+    if (!found) throw new ScanError("no_board_found", "No sudoku board found in the image");
+    const corners = found.map((p) => ({ x: p.x / scale, y: p.y / scale }));
     return { ...warpBoard(cv, rgba, corners), corners };
   } finally {
     rgba.delete();
+    small?.delete();
     binary?.delete();
   }
 }

@@ -27,6 +27,12 @@ const GOOD_EDGE_SUPPORT = 0.9;
 /** Weakest 3x3 box line's ink contrast for a quad to count as a sudoku grid. */
 const MIN_GRID_SUPPORT = 0.4;
 /**
+ * Weaker box-line contrast every returned board must still show. Whole boards score
+ * 0.37 or more even on bowed pages; part of a board cut off by the frame, whose 1/3
+ * lines fall in the middle of cells, scores under 0.1.
+ */
+const MIN_ACCEPT_GRID_SUPPORT = 0.2;
+/**
  * A grid quad nested inside another and covering at least this fraction of it is
  * the board, and the outer one its paper or a frame: board-to-paper area runs from
  * about 0.4 (wide margin) to 0.9, while a single 3x3 box is only 1/9 of a board.
@@ -293,7 +299,10 @@ function quadFromSides(cv: CV, contour: Mat, binary: Mat, minArea: number): Fit 
  */
 function solidBoardMask(cv: CV, binary: Mat): Mat {
   const k = Math.max(5, Math.round(Math.min(binary.rows, binary.cols) / 60)) | 1;
-  const mask = binary.clone();
+  // Not binary.clone(): in this OpenCV.js build clone() shares the pixel buffer, so
+  // filling holes in the "copy" would fill them in the caller's mask too.
+  const mask = new cv.Mat();
+  binary.copyTo(mask);
   let contours: MatVector | undefined;
   let hierarchy: Mat | undefined;
   let kernel: Mat | undefined;
@@ -357,8 +366,10 @@ function bestQuad(cv: CV, mask: Mat, binary: Mat, minArea: number): Fit | null {
     for (const { index } of candidates.slice(0, MAX_CANDIDATES)) {
       const c = contours.get(index);
       try {
+        // Speckle stuck to the outside of the border (paper grain in photos) pushes the
+        // hull a few pixels out, so score the hull quad after snapping it onto the border.
         const hullQuad = quadFromHull(cv, c, minArea);
-        let fit = hullQuad ? makeFit(binary, hullQuad) : null;
+        let fit = hullQuad ? makeFit(binary, refineQuad(binary, hullQuad)) : null;
         if (!fit || !fit.grid) {
           const sides = quadFromSides(cv, c, binary, minArea);
           if (sides && (!fit || better(sides, fit))) fit = sides;
@@ -450,8 +461,10 @@ function refineQuad(binary: Mat, quad: readonly Point[]): Point[] {
  * MIN_BOARD_AREA_FRACTION of the image, whose edges lie on ink and whose interior
  * shows the 3x3 box lines (see gridSupport). If clutter or text touching the board
  * spoils that, retry on a mask where the board is a solid blob (solidBoardMask).
- * A quad without a box grid is still returned if nothing better is found. Returns the corners ordered top-left, top-right,
- * bottom-right, bottom-left, or null if there is no board.
+ * A quad that failed the box-grid test can still win if nothing better is found, but
+ * only if its box lines show at least MIN_ACCEPT_GRID_SUPPORT once snapped to the
+ * border, so part of a board cut off by the frame is rejected. Returns the corners
+ * ordered top-left, top-right, bottom-right, bottom-left, or null if there is no board.
  */
 export function findBoardQuad(cv: CV, binary: Mat): [Point, Point, Point, Point] | null {
   const minArea = MIN_BOARD_AREA_FRACTION * binary.rows * binary.cols;
@@ -465,5 +478,7 @@ export function findBoardQuad(cv: CV, binary: Mat): [Point, Point, Point, Point]
       solid.delete();
     }
   }
-  return fit && fit.support >= MIN_EDGE_SUPPORT ? orderCorners(refineQuad(binary, fit.quad)) : null;
+  if (!fit || fit.support < MIN_EDGE_SUPPORT) return null;
+  const quad = refineQuad(binary, fit.quad);
+  return gridSupport(binary, quad) >= MIN_ACCEPT_GRID_SUPPORT ? orderCorners(quad) : null;
 }

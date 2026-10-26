@@ -173,8 +173,10 @@ Done when: the public HTTPS URL works on a phone and can be installed to the hom
   - [x] Step engine `generateSteps(grid)` in `src/solver/steps.ts`: naked single, hidden single, pointing/claiming, naked pair, hidden pair, else a labelled trial-and-error fallback; explanations built from the board at each step; deterministic
     - Independent checker (`steps.test.ts`) verifies every step when it is made, that no simpler technique was available, and the facts in single-step explanations; replay reaches the solution on all 33 solvable fixtures, the 17 real grids (when present) and 198 seeded symmetry variants. It caught six injected engine bugs.
     - Logic alone solves 30/33 fixtures (easy 10/10, medium 10/10, hard 8/10, hard-known 2/3) and 15/17 real grids. The fallback is needed by hard-05 (1 of 58 steps), hard-08 (2 of 60), hard-known-01 (5 of 67), book-532 (1 of 60) and book-534 (1 of 75). Slowest `generateSteps`: hard-known-01, about 3 ms.
-  - [ ] Shared grid `steps` mode; manual Solve also opens the Solved screen, with View solving steps
-  - [ ] Step-by-step screen and activity log (`src/ui/steps/`)
+  - [x] Shared grid `steps` mode; manual Solve also opens the Solved screen, with View solving steps
+  - [x] Step-by-step screen and activity log (`src/ui/steps/`)
+    - Board above the explanation card (technique, "Logical deduction" or "Trial and error" badge, candidates of the target cell), activity log of every step (tap to jump), sticky Previous / Step N of M / Next; arrow keys, Home and End; `aria-live="polite"` explanation; highlight fade off under `prefers-reduced-motion`. Two columns from 1024px.
+    - Bundled eagerly so it works offline with manual entry: entry chunk 7.8 -> 12.1 KB gzip JS, CSS 1.9 -> 2.6 KB gzip (+5.1 KB in total).
   - [ ] Playwright e2e for the steps flow; SPEC.md updated
   - [ ] Optional: Hint button for the current board
 - [ ] Landing page with a single-column mobile hero, prominent Scan button and Sudoku preview

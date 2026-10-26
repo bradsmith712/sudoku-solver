@@ -8,8 +8,10 @@
  *  - "highlight": review after a scan. Editable, plus low-confidence and
  *    repaired ("changed") cells are marked.
  *  - "readonly": the solution view. No selection or input.
+ *  - "steps": the step-by-step view (ui/steps). Read-only, plus the step's
+ *    target, units, eliminations and newly placed digit are marked.
  */
-export type GridMode = "editable" | "highlight" | "readonly";
+export type GridMode = "editable" | "highlight" | "readonly" | "steps";
 
 export type CellState = {
   /** 0 = blank, 1-9 = digit. */
@@ -20,6 +22,14 @@ export type CellState = {
   conflict?: boolean;
   /** Set by repair, not by the user; shown only in "highlight" mode. */
   changed?: boolean;
+  /** "steps" mode only: the step's target or pattern cell. */
+  focus?: boolean;
+  /** "steps" mode only: in a row, column or box the step is about. */
+  area?: boolean;
+  /** "steps" mode only: the step removes candidates from this cell. */
+  elim?: boolean;
+  /** "steps" mode only: the digit placed by this step. */
+  fresh?: boolean;
 };
 
 export type SudokuGrid = {
@@ -81,7 +91,7 @@ export function createSudokuGrid(opts: GridOptions): SudokuGrid {
     }
   }
 
-  const interactive = () => mode !== "readonly";
+  const interactive = () => mode !== "readonly" && mode !== "steps";
 
   function paint() {
     el.dataset.mode = mode;
@@ -89,6 +99,7 @@ export function createSudokuGrid(opts: GridOptions): SudokuGrid {
     else el.removeAttribute("tabindex");
     if (!last) return;
     const marks = mode === "highlight";
+    const steps = mode === "steps";
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
         const s = last[r][c];
@@ -99,6 +110,10 @@ export function createSudokuGrid(opts: GridOptions): SudokuGrid {
         node.classList.toggle("conflict", !!s.conflict);
         node.classList.toggle("low", marks && !!s.low);
         node.classList.toggle("changed", marks && !!s.changed);
+        node.classList.toggle("focus", steps && !!s.focus);
+        node.classList.toggle("area", steps && !!s.area);
+        node.classList.toggle("elim", steps && !!s.elim);
+        node.classList.toggle("fresh", steps && !!s.fresh);
         const isSel = interactive() && sel[0] === r && sel[1] === c;
         node.classList.toggle("selected", isSel);
         if (isSel) node.setAttribute("aria-current", "true");
@@ -108,6 +123,9 @@ export function createSudokuGrid(opts: GridOptions): SudokuGrid {
           marks && s.low ? "low confidence" : "",
           s.conflict ? "conflict" : "",
           marks && s.changed ? "changed by repair" : "",
+          steps && s.fresh ? "placed in this step" : "",
+          steps && s.elim ? "candidates removed in this step" : "",
+          steps && s.focus && !s.fresh ? "part of this step's pattern" : "",
         ].filter(Boolean);
         node.setAttribute("aria-label", `Row ${r + 1}, column ${c + 1}: ${notes.join(", ")}`);
       }

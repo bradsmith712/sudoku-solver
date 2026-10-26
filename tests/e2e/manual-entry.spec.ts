@@ -64,6 +64,7 @@ test("tap input with the number pad", async ({ page }) => {
 test("clear resets the grid and message", async ({ page }) => {
   await enter(page, PUZZLE);
   await page.getByRole("button", { name: "Solve" }).click();
+  await page.getByRole("button", { name: "Edit puzzle" }).click();
   await page.getByRole("button", { name: "Clear" }).click();
   expect((await readGrid(page)).flat().every((v) => v === 0)).toBe(true);
   await expect(page.getByTestId("message")).toHaveText("");
@@ -72,6 +73,10 @@ test("clear resets the grid and message", async ({ page }) => {
 test("editing after solving drops the solution", async ({ page }) => {
   await enter(page, PUZZLE);
   await page.getByRole("button", { name: "Solve" }).click();
+  await expect(page.getByTestId("title")).toHaveText("Puzzle solved!");
+  await page.getByRole("button", { name: "Edit puzzle" }).click();
+  await expect(page.getByTestId("title")).toHaveText("Enter your puzzle");
+  await expect(cell(page, 0)).toHaveText("5");
   await cell(page, 0).click();
   await page.keyboard.press("Backspace");
   await expect(page.locator(".cell.solved")).toHaveCount(0);

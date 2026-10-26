@@ -5,7 +5,9 @@
  *  scanning decode + scan + repair (scanner.ts), vision code loaded lazily
  *  review   the scanned grid (highlight mode): low-confidence, conflicting and
  *           repaired cells marked; tap to edit; undo repairs; Solve
- *  solved   the solution drawn over the warped board (readonly)
+ *  solved   the solution (readonly), drawn over the warped board after a scan;
+ *           View solving steps, Edit puzzle, Solve another
+ *  steps    step-by-step explanation and activity log (ui/steps)
  *  error    no board found, a scan too wrong to review (retake.ts), the scanner
  *           failed to load, or offline before the vision assets were ever cached
  *           (offline.ts); each with a retry
@@ -19,11 +21,12 @@ import { createNumberPad } from "./pad";
 import { createPhotoInput } from "./photo";
 import { cacheScanAssets, needsConnection, scanAssetsStatus, type AssetsStatus } from "./offline";
 import { preloadScanner, scanPhoto, type ScanOutcome } from "./scanner";
+import { createStepsView } from "./steps/view";
 
 /** SPEC.md feature 7: cells under this confidence are highlighted for review. */
 export const REVIEW_THRESHOLD = 0.9;
 
-type Screen = "entry" | "scanning" | "review" | "solved" | "error";
+type Screen = "entry" | "scanning" | "review" | "solved" | "steps" | "error";
 
 const emptyGrid = (): Grid => Array.from({ length: 9 }, () => new Array<number>(9).fill(0));
 const key = (r: number, c: number) => `${r},${c}`;
@@ -72,7 +75,11 @@ const SCREEN_TEXT: Record<Screen, [string, string]> = {
     "Review the recognized puzzle",
     "Check the highlighted cells, fix any mistakes, then solve.",
   ],
-  solved: ["Puzzle solved!", "Blue digits are the solution, drawn over your photo."],
+  solved: [
+    "Puzzle solved!",
+    "Here's the completed puzzle. You can also explore the solution step by step.",
+  ],
+  steps: ["Solving steps", "See how the solution was found, one step at a time."],
   error: ["We couldn't read that photo", ""],
 };
 
@@ -145,12 +152,14 @@ export function mountApp(root: HTMLElement): void {
             <button type="button" data-action="rescan">New photo</button>
             <button type="button" class="primary" data-action="solve">Solve puzzle</button>
           </div>
-          <div class="actions" data-show="solved">
+          <div class="actions solved-actions" data-show="solved">
+            <button type="button" class="primary" data-action="steps">View solving steps</button>
             <button type="button" data-action="edit">Edit puzzle</button>
-            <button type="button" class="primary" data-action="another">Solve another</button>
+            <button type="button" data-action="another">Solve another</button>
           </div>
         </div>
       </div>
+      <section class="steps-slot" data-show="steps" aria-label="Solving steps"></section>
     </main>`;
 
   const $ = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel) as T;
@@ -174,6 +183,8 @@ export function mountApp(root: HTMLElement): void {
     }),
   );
 
+  const stepsView = createStepsView({ onBack: () => show("solved") });
+
   const cameraInput = createPhotoInput(true, startScan);
   const uploadInput = createPhotoInput(false, startScan);
   root.append(cameraInput, uploadInput);
@@ -188,11 +199,20 @@ export function mountApp(root: HTMLElement): void {
     root.dataset.screen = next;
     const [title, subtitle] = SCREEN_TEXT[next];
     $("[data-testid=title]").textContent = title;
-    $("[data-testid=subtitle]").textContent = subtitle;
+    $("[data-testid=subtitle]").textContent =
+      next === "solved" && scanned
+        ? "Blue digits are the solution, drawn over your photo. You can also explore it step by step."
+        : subtitle;
     root.querySelectorAll<HTMLElement>("[data-show]").forEach((el) => {
       el.hidden = !(el.dataset.show ?? "").split(" ").includes(next);
     });
-    grid.setMode(next === "review" ? "highlight" : next === "solved" ? "readonly" : "editable");
+    grid.setMode(
+      next === "review"
+        ? "highlight"
+        : next === "solved" || next === "steps"
+          ? "readonly"
+          : "editable",
+    );
     grid.setBackground(next === "solved" && scanned ? scanned.result.warped : null);
     if (next !== "review") {
       originalToggle.checked = false;
@@ -251,8 +271,7 @@ export function mountApp(root: HTMLElement): void {
     if (res.status === "solved" && res.solution) {
       solution = res.solution;
       setMessage(MESSAGES.solved, "success");
-      if (screen === "review") show("solved");
-      else render();
+      show("solved");
     } else {
       solution = null;
       setMessage(MESSAGES[res.status], res.status === "multiple" ? "warning" : "error");
@@ -373,12 +392,19 @@ export function mountApp(root: HTMLElement): void {
       render();
     },
     solve: doSolve,
+    steps: () => {
+      $(".steps-slot").appendChild(stepsView.el);
+      stepsView.open(givens);
+      show("steps");
+      window.scrollTo(0, 0);
+    },
     edit: () => {
       solution = null;
       setMessage("");
-      show("review");
+      show(scanned ? "review" : "entry");
     },
     another: () => {
+      stepsView.close();
       resetBoard();
       show("entry");
     },

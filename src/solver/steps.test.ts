@@ -2,7 +2,13 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { Grid } from "../types";
 import { solve } from "./solver";
-import { FALLBACK_EXPLANATION, generateSteps, type Step, type Technique } from "./steps";
+import {
+  candidatesAt,
+  FALLBACK_EXPLANATION,
+  generateSteps,
+  type Step,
+  type Technique,
+} from "./steps";
 
 type Fixture = { name: string; category: string; expected: string; grid: Grid; solution?: Grid };
 type Puzzle = { name: string; category: string; grid: Grid; solution: Grid };
@@ -451,5 +457,23 @@ describe("report", () => {
     console.log(lines.join("\n"));
     expect(logicOnly).toBeGreaterThanOrEqual(LOGIC_ONLY_FLOOR);
     expect(worst.ms).toBeLessThan(100);
+  });
+});
+
+describe("candidatesAt", () => {
+  it("matches the checker's candidates before every step", () => {
+    for (const p of solvable
+      .slice(0, 5)
+      .concat(solvable.filter((x) => x.name === "hard-known-01"))) {
+      const steps = generateSteps(p.grid);
+      const ck = new Checker(p.grid);
+      steps.forEach((s, n) => {
+        const target = s.placements[0] ?? s.eliminations[0];
+        expect(candidatesAt(p.grid, steps, n, target), `${p.name} step ${n + 1}`).toEqual(
+          ck.cand[target.row][target.col],
+        );
+        ck.apply(s);
+      });
+    }
   });
 });

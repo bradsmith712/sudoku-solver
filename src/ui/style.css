@@ -282,6 +282,15 @@ button:active {
   gap: 8px;
 }
 
+/* Solved: View solving steps across the top, the two secondary actions below. */
+.actions.solved-actions {
+  grid-template-columns: 1fr 1fr;
+}
+
+.solved-actions .primary {
+  grid-column: 1 / -1;
+}
+
 button.primary {
   background: var(--solved);
   border-color: var(--solved);
@@ -471,7 +480,8 @@ canvas.original {
     grid-column: 3;
   }
 
-  .actions {
+  .actions,
+  .actions.solved-actions {
     grid-template-columns: 1fr;
   }
 

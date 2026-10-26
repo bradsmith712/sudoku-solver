@@ -451,3 +451,13 @@ export function boardAfter(grid: Grid, steps: Step[], n: number): Grid {
   for (const s of steps.slice(0, n)) for (const p of s.placements) out[p.row][p.col] = p.digit;
   return out;
 }
+
+/**
+ * Candidates of (row, col) once `steps[0..n)` are applied: digits not in its row,
+ * column or box, minus those removed by elimination steps. Empty for a filled cell.
+ */
+export function candidatesAt(grid: Grid, steps: Step[], n: number, cell: Cell): number[] {
+  const b = new Board(grid);
+  for (const s of steps.slice(0, n)) b.apply(s);
+  return digitsOf(b.cands[index(cell)]);
+}

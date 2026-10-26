@@ -94,7 +94,7 @@ Modules are independent and communicate only through these types: `src/solver`, 
 ## Performance and size
 
 - Scan to review screen in under 3 seconds on a mid-range phone for a 1024px image.
-- Lazy-load OpenCV.js and the model only when the user first scans. The manual-entry path must work instantly.
+- Lazy-load OpenCV.js and the model only when the user first scans. The manual-entry path must work instantly. Loading starts when the user taps Scan or Upload, so it overlaps taking or picking the photo.
 - Self-host OpenCV.js and the model file (no runtime dependency on a third-party CDN).
 - Solving any valid puzzle takes under 100 ms.
 

@@ -22,12 +22,18 @@ export type ScanOutcome = {
 
 let vision: Promise<typeof import("../vision/scan")> | undefined;
 
-/** Start loading the vision code (e.g. when the user opens a file picker). */
+/**
+ * Start loading the vision code, OpenCV.js and the model when the user opens the
+ * camera or file picker, so they load while the user takes or picks a photo.
+ */
 export function preloadScanner(): void {
-  vision ??= import("../vision/scan").catch((err: unknown) => {
+  if (vision) return;
+  vision = import("../vision/scan").catch((err: unknown) => {
     vision = undefined; // let a retry load it again
     throw err;
   });
+  // Errors surface from scanPhoto, which awaits the same loads.
+  vision.then((m) => m.warmUp()).catch(() => undefined);
 }
 
 function measure(name: string, start: number): void {

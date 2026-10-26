@@ -12,7 +12,8 @@
  */
 import type { Grid, ScanResult } from "../types";
 import { detectBoard } from "./board";
-import { recognizeBoard } from "./recognize";
+import { loadOpenCv } from "./opencv";
+import { loadDigitModel, recognizeBoard } from "./recognize";
 import { rotateHomography, rotateImage, type QuarterTurns } from "./rotate";
 import { BOARD_SIZE } from "./warp";
 
@@ -144,6 +145,14 @@ export async function scanDetailed(image: ImageData): Promise<ScanDetails> {
     candidates,
     timings,
   };
+}
+
+/**
+ * Start loading OpenCV.js and the digit model without scanning, e.g. when the user
+ * opens the camera or file picker, so the first scan does not wait for them.
+ */
+export async function warmUp(): Promise<void> {
+  await Promise.all([loadOpenCv(), loadDigitModel()]);
 }
 
 /**

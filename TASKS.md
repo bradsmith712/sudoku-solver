@@ -73,7 +73,8 @@ Done when: warped boards look correct on the synthetic set and on the real photo
   - 48 upright faces from 15 families (Helvetica/Arial-like sans first) for training, 4 families held out for validation; preprocessing matches `cells.ts` (`cells.parity.test.ts`). First model: synthetic only, 361 KB, 99.15% on held-out fonts.
 - [x] Integrate onnxruntime-web, loading the model lazily; return digit and confidence per cell
   - `recognizeBoard(warped)` in `src/vision/recognize.ts`: the session is created once and reused (Phase 6 can call it per orientation); wasm (14.2 MB, 3.7 MB gzip) and model are self-hosted Vite assets, no CDN; tests run the same package and model under Node 18. Blank-cell confidence comes from the ink rule (`blankConfidence`), documented in SPEC.md. Checked in headless Chromium: correct digits, one model load, only same-origin requests.
-- [ ] Add `npm run eval:vision` reporting cell accuracy and full-board accuracy on synthetic and real sets, with real results per split and per tag (`tally()` in `src/vision/__fixtures__/real.ts`); headline real numbers come from `split=test` only
+- [x] Add `npm run eval:vision` reporting cell accuracy and full-board accuracy on synthetic and real sets, with real results per split and per tag (`tally()` in `src/vision/__fixtures__/real.ts`); headline real numbers come from `split=test` only
+  - `src/vision/vision.eval.test.ts`: (1) all cells, (2) printed-digit cells, (3) perfect boards per set, split and tag; true blanks under 0.9 per board; share of missed digits under 0.9; top-10 confusions; `test-results/vision-eval/report.json`; fails on a missed SPEC target. `EVAL_SPLITS=train` keeps test photos out while tuning.
 - [ ] Iterate on augmentation or model until targets are met: at least 98% cell accuracy (synthetic), at least 90% (real clean photos)
 - [ ] Check model size and keep it small (target under 1 MB)
 

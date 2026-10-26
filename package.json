@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "test": "vitest run --passWithNoTests",
+    "eval:vision": "EVAL_VISION=1 vitest run src/vision/vision.eval.test.ts",
     "test:e2e": "playwright test",
     "lint": "eslint . && prettier --check .",
     "typecheck": "tsc --noEmit",

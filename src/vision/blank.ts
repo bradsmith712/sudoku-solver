@@ -68,3 +68,26 @@ export function largestInkBlob(cell: Cell): number {
 export function isDigit(cell: Cell): boolean {
   return largestInkBlob(cell) >= MIN_BLOB;
 }
+
+/**
+ * Largest blob size (px) at or below which a blank cell is fully certain. Set on the
+ * synthetic set and split=train photos: true blanks had blobs of at most 7 px, so none
+ * fall under the 0.9 review threshold, while a blank whose blob is over 12 px (close
+ * to a faint or broken digit) does.
+ */
+export const BLANK_SURE = MIN_BLOB / 2;
+/** Confidence of a blank cell whose largest blob is just under MIN_BLOB. */
+export const BLANK_FLOOR = 0.5;
+
+/**
+ * Confidence (0-1) that a cell isDigit() calls blank is really blank, from the ink
+ * rule's margin rather than the digit model: 1 while the largest centre ink blob is
+ * at most BLANK_SURE, falling linearly to BLANK_FLOOR as it nears MIN_BLOB. Same
+ * scale and 0.9 review threshold as digit confidence (SPEC.md, review screen).
+ */
+export function blankConfidence(cell: Cell): number {
+  const blob = largestInkBlob(cell);
+  if (blob <= BLANK_SURE) return 1;
+  const t = Math.min(1, (blob - BLANK_SURE) / (MIN_BLOB - BLANK_SURE));
+  return 1 - t * (1 - BLANK_FLOOR);
+}

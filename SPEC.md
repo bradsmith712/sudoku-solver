@@ -66,7 +66,7 @@ Screens 6 and 8 (activity log, step-by-step) are not in the v1 scope; see Stretc
 type Grid = number[][];            // 9x9, 0 = blank, 1-9 = digit
 type ScanResult = {
   grid: Grid;
-  confidence: number[][];          // 9x9, 0-1 per cell
+  confidence: number[][];          // 9x9, 0-1 per cell (digit: model softmax; blank: ink-rule margin)
   warped: ImageData;               // top-down 450x450 board image
   homography?: number[];           // optional, for projecting the solution back onto the photo
 };
@@ -83,7 +83,7 @@ Modules are independent and communicate only through these types: `src/solver`, 
 3. **Board detection:** find the largest quadrilateral contour, order its corners, apply a perspective transform to a square board image.
 4. **Cell extraction:** split the warped board into 81 cells, strip grid lines, and decide blank vs. digit before classification.
 5. **Digit recognition:** classify each non-blank cell with the ONNX model, returning a digit and a confidence.
-6. **Review screen:** show the recognized grid, highlight low-confidence cells (below 0.9), and let the user tap to correct before solving.
+6. **Review screen:** show the recognized grid, highlight low-confidence cells (below 0.9), and let the user tap to correct before solving. Blank and digit cells share the same 0-1 confidence scale and 0.9 threshold, but the values come from different places: a digit's confidence is the CNN's softmax probability for the chosen digit; a blank's comes from the blank-vs-digit ink rule (how far the largest ink blob in the cell centre is below the digit threshold), not from the CNN, which only sees cells already judged to hold a digit. Treat both the same on the review screen.
 7. **Solution view:** original givens in one color, solved digits in another, drawn over the warped board. Stretch: project onto the original photo using the inverse homography.
 8. **Camera input:** a file input with `accept="image/*"` and `capture="environment"` to open the phone camera. Resize large images to a max of about 1024px before processing. A full-screen live camera view (see Design rules) is an enhancement on top of this and must fall back to the file input when camera access is unavailable or denied.
 9. **PWA:** web manifest, icons, service worker with offline caching of the app shell and model.

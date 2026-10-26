@@ -82,6 +82,20 @@ async function scan(page: Page) {
   });
 }
 
+/** Tap Upload while offline: the "connect once" card shows and no file picker opens. */
+async function expectConnectOnce(page: Page) {
+  let pickers = 0;
+  const onChooser = () => pickers++;
+  page.on("filechooser", onChooser);
+  await page.getByRole("button", { name: "Upload image" }).first().click();
+  await expect(page.getByTestId("title")).toHaveText("Connect once to enable offline scanning");
+  await expect(page.getByTestId("error-text")).toContainText("one-time download");
+  await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Upload image" })).toBeHidden();
+  page.off("filechooser", onChooser);
+  expect(pickers, "no file picker while scanning cannot work").toBe(0);
+}
+
 test.describe.configure({ mode: "serial" });
 test.skip(({ browserName }) => browserName !== "chromium", "service worker checks use Chromium");
 
@@ -123,6 +137,26 @@ test("manual entry works offline", async ({ page, context, baseURL }) => {
   expectClean(w);
 });
 
+test("offline before any scan: connect once, manual entry still works", async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  const w = watch(context, page, new URL(baseURL!).origin);
+  await open(page);
+  await context.setOffline(true);
+  await page.reload();
+  await expectConnectOnce(page);
+  await page.screenshot({ path: "test-results/pwa/connect-once-390.png", fullPage: true });
+  // Still offline: Try again keeps the card up rather than failing a scan.
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByTestId("title")).toHaveText("Connect once to enable offline scanning");
+  await page.getByRole("button", { name: "Enter manually" }).click();
+  await enterAndSolve(page);
+  await context.setOffline(false);
+  expectClean(w);
+});
+
 test("after one online scan, scanning works offline", async ({ page, context, baseURL }) => {
   test.setTimeout(300_000);
   const w = watch(context, page, new URL(baseURL!).origin);
@@ -149,7 +183,14 @@ test("after one online scan, scanning works offline", async ({ page, context, ba
       ),
     ),
   ).toBe(false);
-  await scan(offline);
+  // The real path: tap Upload, the picker opens (no "connect once" card), pick the photo.
+  await expect.poll(() => assetsReady(offline)).toBe(true);
+  const chooser = offline.waitForEvent("filechooser");
+  await offline.getByRole("button", { name: "Upload image" }).click();
+  await (await chooser).setFiles(PHOTO);
+  await expect(offline.getByTestId("title")).toHaveText("Review the recognized puzzle", {
+    timeout: SCAN_TIMEOUT,
+  });
   expect(network, "offline responses must come from the service worker").toEqual([]);
   await context.setOffline(false);
   expectClean(w);
@@ -184,6 +225,11 @@ test("a truncated download is never cached or marked ready", async ({ page, cont
   await expect.poll(async () => (await cachedAssets()).some((u) => /opencv/.test(u))).toBe(true);
   expect((await cachedAssets()).some((u) => u.endsWith(".wasm"))).toBe(false);
   expect(await assetsReady(page)).toBe(false);
+
+  await context.setOffline(true);
+  await page.reload();
+  await expectConnectOnce(page);
+  await context.setOffline(false);
 });
 
 test("activate deletes old caches and keeps still-listed assets", async ({ page }) => {

@@ -6,8 +6,9 @@
  *  review   the scanned grid (highlight mode): low-confidence, conflicting and
  *           repaired cells marked; tap to edit; undo repairs; Solve
  *  solved   the solution drawn over the warped board (readonly)
- *  error    no board found, a scan too wrong to review (retake.ts), or the scanner
- *           failed to load; each with a retry
+ *  error    no board found, a scan too wrong to review (retake.ts), the scanner
+ *           failed to load, or offline before the vision assets were ever cached
+ *           (offline.ts); each with a retry
  */
 import { findConflicts } from "../solver/conflicts";
 import type { Change } from "../solver/repair";
@@ -16,6 +17,7 @@ import type { Grid } from "../types";
 import { createSudokuGrid, type CellState } from "./grid";
 import { createNumberPad } from "./pad";
 import { createPhotoInput } from "./photo";
+import { cacheScanAssets, needsConnection, scanAssetsStatus, type AssetsStatus } from "./offline";
 import { preloadScanner, scanPhoto, type ScanOutcome } from "./scanner";
 
 /** SPEC.md feature 7: cells under this confidence are highlighted for review. */
@@ -43,7 +45,7 @@ const REVIEW_HINTS: Record<Exclude<SolveStatus, "solved">, string> = {
     "These digits allow more than one solution, so a digit may be missing. Compare the grid with your puzzle.",
 };
 
-type ErrorKind = "no-board" | "unreadable" | "failed";
+type ErrorKind = "no-board" | "unreadable" | "failed" | "offline";
 
 const ERROR_TEXT: Record<ErrorKind, string> = {
   "no-board":
@@ -52,6 +54,12 @@ const ERROR_TEXT: Record<ErrorKind, string> = {
     "We couldn't read this one: too many digits break the sudoku rules, which usually means the grid was found in the wrong place. Try again with the whole grid in view, flat and well lit.",
   failed:
     "Something went wrong while reading the photo. Check your connection and retry, or enter the puzzle by hand.",
+  offline:
+    "Scanning needs a one-time download. Connect to the internet and scan once; after that, scanning works offline. You can still enter a puzzle by hand.",
+};
+
+const ERROR_TITLE: Partial<Record<ErrorKind, string>> = {
+  offline: "Connect once to enable offline scanning",
 };
 
 const SCREEN_TEXT: Record<Screen, [string, string]> = {
@@ -77,6 +85,9 @@ export function mountApp(root: HTMLElement): void {
   let low = new Set<string>();
   let changed = new Map<string, Change>();
   let lastFile: File | null = null;
+  let lastCamera = true;
+  /** Whether the service worker has every vision asset cached (offline.ts). */
+  let assets: AssetsStatus = "unknown";
 
   root.innerHTML = `
     <header class="topbar"><span class="brand">Sudoku Solver</span></header>
@@ -99,6 +110,7 @@ export function mountApp(root: HTMLElement): void {
           <button type="button" class="primary" data-action="camera">Try another photo</button>
           <button type="button" data-action="upload">Upload image</button>
           <button type="button" data-action="retry" hidden>Retry</button>
+          <button type="button" class="primary" data-action="try-again" hidden>Try again</button>
           <button type="button" data-action="review-anyway" hidden>Review anyway</button>
           <button type="button" data-action="manual">Enter manually</button>
         </div>
@@ -258,7 +270,19 @@ export function mountApp(root: HTMLElement): void {
     setMessage("");
   }
 
+  function refreshAssets(fill = false) {
+    void (fill ? cacheScanAssets() : scanAssetsStatus()).then((s) => {
+      assets = s;
+    });
+  }
+
+  // Decided before the tap: the file input must open inside the tap gesture (iOS).
   function pick(camera: boolean) {
+    lastCamera = camera;
+    if (needsConnection(navigator.onLine, assets)) {
+      showError("offline");
+      return;
+    }
     preloadScanner();
     (camera ? cameraInput : uploadInput).click();
   }
@@ -292,8 +316,15 @@ export function mountApp(root: HTMLElement): void {
       }
     } catch (err) {
       const noBoard = (err as { code?: string }).code === "no_board_found";
+      if (!noBoard && !navigator.onLine) {
+        showError("offline"); // the vision assets could not be downloaded
+        return;
+      }
       showError(noBoard ? "no-board" : "failed");
       if (!noBoard) console.error(err);
+    } finally {
+      // The scanner is loaded now; make sure the worker kept every file for offline use.
+      if (navigator.onLine && assets !== "ready") refreshAssets(true);
     }
   }
 
@@ -302,8 +333,14 @@ export function mountApp(root: HTMLElement): void {
     $<HTMLButtonElement>('.error-card [data-action="retry"]').hidden = kind !== "failed";
     $<HTMLButtonElement>('.error-card [data-action="review-anyway"]').hidden =
       kind !== "unreadable";
+    $<HTMLButtonElement>('.error-card [data-action="try-again"]').hidden = kind !== "offline";
+    for (const source of ["camera", "upload"]) {
+      $<HTMLButtonElement>(`.error-card [data-action="${source}"]`).hidden = kind === "offline";
+    }
     root.dataset.error = kind;
     show("error");
+    const title = ERROR_TITLE[kind];
+    if (title) $("[data-testid=title]").textContent = title;
   }
 
   function drawOriginal(image: ImageData) {
@@ -329,6 +366,7 @@ export function mountApp(root: HTMLElement): void {
       if (lastFile) void startScan(lastFile);
     },
     "review-anyway": () => show("review"),
+    "try-again": () => pick(lastCamera),
     rescan: () => pick(true),
     clear: () => {
       resetBoard();
@@ -361,6 +399,11 @@ export function mountApp(root: HTMLElement): void {
     if (action && action !== "original" && actions[action]) actions[action]();
   });
   originalToggle.addEventListener("change", actions.original);
+
+  window.addEventListener("online", () => refreshAssets());
+  window.addEventListener("offline", () => refreshAssets());
+  navigator.serviceWorker?.addEventListener("controllerchange", () => refreshAssets());
+  refreshAssets();
 
   show("entry");
 }

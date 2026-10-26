@@ -12,11 +12,21 @@ const PHOTO = fileURLToPath(new URL("../fixtures/e2e/synth-upright.jpg", import.
 const SCAN_TIMEOUT = 120_000;
 const PUZZLE = "530070000600195000098000060800060003400803001700020006060000280000419005000080079";
 
-type Watch = { errors: string[]; foreign: string[]; failed: string[]; workers: string[] };
+type Watch = {
+  errors: string[];
+  foreign: string[];
+  outside: string[];
+  failed: string[];
+  workers: string[];
+};
 
-/** Record console errors, page errors, cross-origin requests and failed responses. */
-function watch(context: BrowserContext, page: Page, origin: string): Watch {
-  const w: Watch = { errors: [], foreign: [], failed: [], workers: [] };
+/**
+ * Record console errors, page errors, cross-origin requests, same-origin requests
+ * outside the base path (a URL that ignores Vite's `base`) and failed responses.
+ */
+function watch(context: BrowserContext, page: Page, baseURL: string): Watch {
+  const { origin, pathname: base } = new URL(baseURL);
+  const w: Watch = { errors: [], foreign: [], outside: [], failed: [], workers: [] };
   const attach = (p: Page) => {
     p.on("console", (m) => {
       // The deliberate offline probe below is expected to fail.
@@ -29,9 +39,9 @@ function watch(context: BrowserContext, page: Page, origin: string): Watch {
   context.on("page", attach);
   context.on("request", (r) => {
     const url = new URL(r.url());
-    if (url.protocol !== "data:" && url.protocol !== "blob:" && url.origin !== origin) {
-      w.foreign.push(r.url());
-    }
+    if (url.protocol === "data:" || url.protocol === "blob:") return;
+    if (url.origin !== origin) w.foreign.push(r.url());
+    else if (!url.pathname.startsWith(base)) w.outside.push(r.url());
   });
   context.on("response", (r) => r.status() >= 400 && w.failed.push(`${r.status()} ${r.url()}`));
   return w;
@@ -40,6 +50,7 @@ function watch(context: BrowserContext, page: Page, origin: string): Watch {
 function expectClean(w: Watch) {
   expect(w.errors, "console errors").toEqual([]);
   expect(w.foreign, "cross-origin requests").toEqual([]);
+  expect(w.outside, "requests outside the base path").toEqual([]);
   expect(w.failed, "failed responses").toEqual([]);
 }
 
@@ -100,7 +111,7 @@ test.describe.configure({ mode: "serial" });
 test.skip(({ browserName }) => browserName !== "chromium", "service worker checks use Chromium");
 
 test("the service worker precaches only the app shell", async ({ page, context, baseURL }) => {
-  const w = watch(context, page, new URL(baseURL!).origin);
+  const w = watch(context, page, baseURL!);
   await open(page);
   const source = await (await page.request.get("sw.js")).text();
   const shell = JSON.parse(/const SHELL = (\[.*\]);/.exec(source)![1]) as string[];
@@ -128,7 +139,7 @@ test("the service worker precaches only the app shell", async ({ page, context, 
 });
 
 test("manual entry works offline", async ({ page, context, baseURL }) => {
-  const w = watch(context, page, new URL(baseURL!).origin);
+  const w = watch(context, page, baseURL!);
   await open(page);
   await context.setOffline(true);
   await page.reload();
@@ -142,7 +153,7 @@ test("offline before any scan: connect once, manual entry still works", async ({
   context,
   baseURL,
 }) => {
-  const w = watch(context, page, new URL(baseURL!).origin);
+  const w = watch(context, page, baseURL!);
   await open(page);
   await context.setOffline(true);
   await page.reload();
@@ -159,7 +170,7 @@ test("offline before any scan: connect once, manual entry still works", async ({
 
 test("after one online scan, scanning works offline", async ({ page, context, baseURL }) => {
   test.setTimeout(300_000);
-  const w = watch(context, page, new URL(baseURL!).origin);
+  const w = watch(context, page, baseURL!);
   await open(page);
   await scan(page);
   // Single-threaded onnxruntime: static hosting has no cross-origin isolation.

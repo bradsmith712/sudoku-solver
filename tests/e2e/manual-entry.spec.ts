@@ -31,7 +31,7 @@ function isValid(g: number[][]): boolean {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("./");
 });
 
 test("enter a puzzle by keyboard, solve, and the displayed solution is valid", async ({ page }) => {

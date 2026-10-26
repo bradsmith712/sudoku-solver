@@ -12,7 +12,7 @@ const VIEWPORTS = [
 for (const vp of VIEWPORTS) {
   test(`manual entry layout at ${vp.width}px (${vp.name})`, async ({ page }, info) => {
     await page.setViewportSize({ width: vp.width, height: vp.height });
-    await page.goto("/");
+    await page.goto("./");
     await page.screenshot({ path: info.outputPath(`manual-${vp.width}.png`), fullPage: true });
 
     const overflow = await page.evaluate(
@@ -40,7 +40,7 @@ const REPAIR = fileURLToPath(new URL("../fixtures/e2e/synth-repair.jpg", import.
 for (const vp of VIEWPORTS) {
   test(`review and solved layout at ${vp.width}px (${vp.name})`, async ({ page }, info) => {
     await page.setViewportSize({ width: vp.width, height: vp.height });
-    await page.goto("/");
+    await page.goto("./");
     await page.getByTestId("upload-input").setInputFiles(REPAIR);
     await expect(page.getByTestId("title")).toHaveText("Review the recognized puzzle", {
       timeout: 60_000,

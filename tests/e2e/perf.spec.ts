@@ -58,7 +58,7 @@ for (const rate of [1, 4]) {
     test.skip(browserName !== "chromium", "CPU throttling needs CDP");
     test.setTimeout(300_000);
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/");
+    await page.goto("./");
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Emulation.setCPUThrottlingRate", { rate });
 
@@ -70,7 +70,7 @@ for (const rate of [1, 4]) {
     // seconds to pick the photo (a camera shot takes longer), then choose it.
     const fresh = await page.context().newPage();
     await fresh.setViewportSize({ width: 390, height: 844 });
-    await fresh.goto("/");
+    await fresh.goto("./");
     await (
       await fresh.context().newCDPSession(fresh)
     ).send("Emulation.setCPUThrottlingRate", {

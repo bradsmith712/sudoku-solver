@@ -45,7 +45,7 @@ async function expectReview(page: Page) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("./");
 });
 
 test("upload a photo, correct a cell, solve, and the solution is valid", async ({ page }) => {

@@ -91,15 +91,13 @@ Done when: `eval:vision` meets the thresholds in `SPEC.md`.
 - [ ] Implement `scan(image)` combining detection, extraction, and recognition into a `ScanResult`
 - [ ] Resolve board orientation: run recognition at all 4 rotations of the warped board and choose the one that gives a valid grid with the highest confidence. Puzzles are 180-degree symmetric, so the blank pattern cannot decide it (book-211 and book-212 warp out rotated 90 degrees)
 - [ ] Add camera and upload input (`accept="image/*"` and `capture="environment"`), resizing to a max of about 1024px
-- [ ] Camera-first import screen: full-screen camera view with corner overlay and large shutter button, switch to photo library, Manual Entry as a secondary option, fallback to the file input if camera access fails; advance automatically to detection after capture
-- [ ] Detection screen with draggable crop corners and adjustment controls. This needs corners exposed from `src/vision`; if it requires a `src/types.ts` change, update `SPEC.md` and all users of the types, and tell the owner
 - [ ] Build the review screen: show the recognized grid, highlight cells under 0.9 confidence, tap to edit
 - [ ] Wire review to solve to solution view, with the solution drawn over the warped board
 - [ ] Add friendly error states and retry for no board found, invalid grid, and unsolvable puzzle
 - [ ] Playwright test: upload a fixture photo, correct one cell, solve, assert the solution is valid
 - [ ] Measure scan time; optimize until under 3 seconds on a mid-range phone for a 1024px image
 
-Done when: photo in, solved puzzle out works in a real browser from end to end.
+Done when: in a real browser, a photo uploaded or captured through the file input is scanned and auto-oriented, the review screen shows it with low-confidence, conflicting and repaired cells highlighted and editable, and Solve shows the solution over the warped board. The live camera view and corner adjustment are deferred to Stretch.
 
 ## Phase 7: PWA and deploy
 
@@ -124,6 +122,10 @@ Done when: the public HTTPS URL works on a phone and can be installed to the hom
 ## Stretch
 
 - [ ] Project the solution onto the original photo with the inverse homography
+- [ ] Camera-first import screen: full-screen camera view with corner overlay and large shutter button, switch to photo library, Manual Entry as a secondary option; advance automatically to detection after capture
+  - Deferred from Phase 6: nicer UX only. The fallback is the file input with `capture="environment"` (built in Phase 6), which already opens the phone camera.
+- [ ] Detection screen with draggable crop corners and adjustment controls
+  - Deferred from Phase 6: needs an optional `corners?` field in `ScanResult` plus a `SPEC.md` update. Intended as the manual recovery path when detection returns `no_board_found`.
 - [ ] Handwritten digit support with accuracy comparison
 - [ ] Step-by-step hint mode with the solving activity log, Solved screen (View steps, Solve another) and a step-by-step screen: board above an explanation card, sticky Previous/Next controls
 - [ ] Landing page with a single-column mobile hero, prominent Scan button and Sudoku preview

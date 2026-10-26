@@ -1,34 +1,8 @@
+import { findConflicts } from "../solver/conflicts";
 import { solve } from "../solver/solver";
 import type { Grid } from "../types";
 
 const emptyGrid = (): Grid => Array.from({ length: 9 }, () => new Array<number>(9).fill(0));
-
-/** Cells (as "r,c") that share a row, column or box with an equal digit. */
-export function findConflicts(grid: Grid): Set<string> {
-  const bad = new Set<string>();
-  const units: [number, number][][] = [];
-  for (let k = 0; k < 9; k++) {
-    units.push(Array.from({ length: 9 }, (_, i): [number, number] => [k, i]));
-    units.push(Array.from({ length: 9 }, (_, i): [number, number] => [i, k]));
-    const [br, bc] = [Math.floor(k / 3) * 3, (k % 3) * 3];
-    units.push(
-      Array.from({ length: 9 }, (_, i): [number, number] => [br + Math.floor(i / 3), bc + (i % 3)]),
-    );
-  }
-  for (const unit of units) {
-    const seen = new Map<number, [number, number]>();
-    for (const [r, c] of unit) {
-      const v = grid[r][c];
-      if (!v) continue;
-      const prev = seen.get(v);
-      if (prev) {
-        bad.add(`${prev[0]},${prev[1]}`);
-        bad.add(`${r},${c}`);
-      } else seen.set(v, [r, c]);
-    }
-  }
-  return bad;
-}
 
 const MESSAGES = {
   invalid: "This grid has a repeated digit in a row, column or box. Fix the highlighted cells.",
@@ -95,7 +69,7 @@ export function mountApp(root: HTMLElement): void {
   }
 
   function render() {
-    const conflicts = findConflicts(givens);
+    const conflicts = new Set(findConflicts(givens).map(({ row, col }) => `${row},${col}`));
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
         const el = cells[r][c];

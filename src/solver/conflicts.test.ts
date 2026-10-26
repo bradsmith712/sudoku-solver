@@ -1,39 +1,48 @@
 import { describe, expect, it } from "vitest";
 import type { Grid } from "../types";
-import { findConflicts } from "./app";
+import { findConflicts } from "./conflicts";
 
+const keys = (g: Grid) => findConflicts(g).map(({ row, col }) => `${row},${col}`);
 const empty = (): Grid => Array.from({ length: 9 }, () => new Array<number>(9).fill(0));
 
 describe("findConflicts", () => {
   it("returns nothing for an empty grid", () => {
-    expect(findConflicts(empty()).size).toBe(0);
+    expect(findConflicts(empty())).toEqual([]);
   });
 
   it("flags a repeated digit in a row", () => {
     const g = empty();
     g[0][0] = 5;
     g[0][8] = 5;
-    expect([...findConflicts(g)].sort()).toEqual(["0,0", "0,8"]);
+    expect(keys(g)).toEqual(["0,0", "0,8"]);
   });
 
   it("flags a repeated digit in a column", () => {
     const g = empty();
     g[1][4] = 7;
     g[8][4] = 7;
-    expect([...findConflicts(g)].sort()).toEqual(["1,4", "8,4"]);
+    expect(keys(g)).toEqual(["1,4", "8,4"]);
   });
 
   it("flags a repeated digit in a box", () => {
     const g = empty();
     g[3][3] = 2;
     g[5][5] = 2;
-    expect([...findConflicts(g)].sort()).toEqual(["3,3", "5,5"]);
+    expect(keys(g)).toEqual(["3,3", "5,5"]);
   });
 
   it("ignores equal digits in different units", () => {
     const g = empty();
     g[0][0] = 4;
     g[4][5] = 4;
-    expect(findConflicts(g).size).toBe(0);
+    expect(findConflicts(g)).toEqual([]);
+  });
+
+  it("flags every copy when a digit repeats three times", () => {
+    const g = empty();
+    g[2][0] = 9;
+    g[2][4] = 9;
+    g[2][8] = 9;
+    expect(keys(g)).toEqual(["2,0", "2,4", "2,8"]);
   });
 });

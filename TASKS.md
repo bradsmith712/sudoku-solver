@@ -85,9 +85,9 @@ Done when: `eval:vision` meets the thresholds in `SPEC.md`.
 
 ## Phase 6: Integration and review screen
 
-- [ ] Before building screens, check `docs/mockups.png` and the owner's 390px mobile mockups (`docs/mockups-mobile.png`) if present; follow the Design section of `SPEC.md`
-- [ ] Refactor the Phase 2 grid into a shared `SudokuGrid` component with a `mode` prop (editable, highlight, read-only); reuse it for review, manual entry and the solution view; keep the Phase 2 e2e tests passing
-- [ ] Add responsive layout: single column under 640px, larger board at 640-1023px, two columns from 1024px; verify with Playwright screenshots at 390px, 768px and 1280px
+- [x] Before building screens, check `docs/mockups.png` and the owner's 390px mobile mockups (`docs/mockups-mobile.png`) if present; follow the Design section of `SPEC.md`
+- [x] Refactor the Phase 2 grid into a shared `SudokuGrid` component with a `mode` prop (editable, highlight, read-only); reuse it for review, manual entry and the solution view; keep the Phase 2 e2e tests passing
+- [x] Add responsive layout: single column under 640px, larger board at 640-1023px, two columns from 1024px; verify with Playwright screenshots at 390px, 768px and 1280px
 - [ ] Implement `scan(image)` combining detection, extraction, and recognition into a `ScanResult`
 - [ ] Resolve board orientation: run recognition at all 4 rotations of the warped board and choose the one that gives a valid grid with the highest confidence. Puzzles are 180-degree symmetric, so the blank pattern cannot decide it (book-211 and book-212 warp out rotated 90 degrees)
 - [ ] Add camera and upload input (`accept="image/*"` and `capture="environment"`), resizing to a max of about 1024px

@@ -1,17 +1,25 @@
+/* Mobile first: under 640px is the base; 640px tablet and 1024px desktop below. */
 :root {
+  --ink: #111827;
+  --muted: #6b7280;
   --given: #111827;
   --solved: #2563eb;
   --line: #9ca3af;
   --box-line: #111827;
+  --border: #e5e7eb;
   --sel: #dbeafe;
   --bad: #fecaca;
+  --low: #fef3c7;
+  --low-edge: #d97706;
+  --changed: #7c3aed;
+  --surface: #fff;
   font-family:
     system-ui,
     -apple-system,
     "Segoe UI",
     Roboto,
     sans-serif;
-  color: var(--given);
+  color: var(--ink);
   background: #f9fafb;
 }
 
@@ -23,6 +31,42 @@ body {
   margin: 0;
 }
 
+[hidden] {
+  display: none !important;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 52px;
+  padding: 0 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: -0.01em;
+}
+
+.brand::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  vertical-align: -3px;
+  border-radius: 3px;
+  background:
+    linear-gradient(var(--surface) 0 0) 6px 0 / 2px 100% no-repeat,
+    linear-gradient(var(--surface) 0 0) 12px 0 / 2px 100% no-repeat,
+    linear-gradient(var(--surface) 0 0) 0 6px / 100% 2px no-repeat,
+    linear-gradient(var(--surface) 0 0) 0 12px / 100% 2px no-repeat,
+    var(--solved);
+}
+
 .app {
   max-width: 440px;
   margin: 0 auto;
@@ -32,26 +76,55 @@ body {
   gap: 12px;
 }
 
-h1 {
-  font-size: 1.25rem;
-  margin: 0;
+.intro {
   text-align: center;
 }
 
+h1 {
+  font-size: 1.2rem;
+  margin: 4px 0 2px;
+}
+
+.intro p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.workspace,
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---- board ---- */
+
 .board {
+  position: relative;
   width: 100%;
   aspect-ratio: 1;
   display: grid;
   grid-template-columns: repeat(9, 1fr);
   grid-template-rows: repeat(9, 1fr);
   border: 2px solid var(--box-line);
-  background: #fff;
+  background: var(--surface);
   touch-action: manipulation;
   user-select: none;
   outline: none;
 }
 
+.board-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
 .cell {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -61,21 +134,26 @@ h1 {
   cursor: pointer;
 }
 
-.cell:nth-child(9n) {
+.board[data-mode="readonly"] .cell {
+  cursor: default;
+}
+
+/* The board's own children start with the photo canvas, so cells are children 2-82. */
+.cell:nth-child(9n + 1) {
   border-right: 0;
 }
 
-.cell:nth-child(n + 73) {
+.cell:nth-child(n + 74) {
   border-bottom: 0;
 }
 
-.cell:nth-child(9n + 3),
-.cell:nth-child(9n + 6) {
+.cell:nth-child(9n + 4),
+.cell:nth-child(9n + 7) {
   border-right: 2px solid var(--box-line);
 }
 
-.cell:nth-child(n + 19):nth-child(-n + 27),
-.cell:nth-child(n + 46):nth-child(-n + 54) {
+.cell:nth-child(n + 20):nth-child(-n + 28),
+.cell:nth-child(n + 47):nth-child(-n + 55) {
   border-bottom: 2px solid var(--box-line);
 }
 
@@ -88,6 +166,27 @@ h1 {
   color: var(--solved);
 }
 
+.cell.low {
+  background: var(--low);
+  box-shadow: inset 0 0 0 2px var(--low-edge);
+}
+
+.cell.changed {
+  box-shadow: inset 0 0 0 2px var(--changed);
+  color: var(--changed);
+}
+
+.cell.changed::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--changed);
+}
+
 .cell.conflict {
   background: var(--bad);
 }
@@ -97,17 +196,51 @@ h1 {
   background: var(--sel);
 }
 
-.cell.selected.conflict {
-  background: var(--bad);
+.cell.selected.conflict,
+.cell.selected.low {
   outline: 2px solid var(--solved);
   outline-offset: -2px;
 }
+
+.cell.selected.conflict {
+  background: var(--bad);
+}
+
+.cell.selected.low {
+  background: var(--low);
+}
+
+/* Drawn over the warped photo: the printed givens show through, so only solved digits are drawn. */
+.board.on-photo {
+  background: transparent;
+}
+
+.board.on-photo .cell {
+  border-color: transparent;
+}
+
+.board.on-photo .cell.given {
+  color: transparent;
+}
+
+.board.on-photo .cell.solved {
+  font-weight: 700;
+  text-shadow:
+    0 0 3px #fff,
+    0 0 3px #fff;
+}
+
+/* ---- controls ---- */
 
 .message {
   min-height: 3em;
   margin: 0;
   text-align: center;
   font-size: 0.95rem;
+}
+
+.message:empty {
+  min-height: 0;
 }
 
 .message[data-kind="error"] {
@@ -132,9 +265,9 @@ h1 {
 button {
   font: inherit;
   min-height: 48px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   color: inherit;
   cursor: pointer;
 }
@@ -145,7 +278,7 @@ button:active {
 
 .actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 2fr;
   gap: 8px;
 }
 
@@ -154,4 +287,53 @@ button.primary {
   border-color: var(--solved);
   color: #fff;
   font-weight: 600;
+}
+
+/* ---- tablet: larger board ---- */
+@media (min-width: 640px) {
+  .app {
+    max-width: 600px;
+    padding: 24px 24px 32px;
+    gap: 16px;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  .cell {
+    font-size: 1.9rem;
+  }
+
+  .pad {
+    grid-template-columns: repeat(10, 1fr);
+  }
+}
+
+/* ---- desktop: board left, controls right ---- */
+@media (min-width: 1024px) {
+  .app {
+    max-width: 920px;
+    padding: 32px 32px 40px;
+  }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 520px) minmax(220px, 1fr);
+    gap: 32px;
+    align-items: start;
+  }
+
+  .pad {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* Erase sits in the last row beside 9's column, as in the desktop mockup. */
+  .pad button[data-digit="0"] {
+    grid-column: 3;
+  }
+
+  .actions {
+    grid-template-columns: 1fr;
+  }
 }

@@ -1,0 +1,6 @@
+# Offline training only (tools/train/train.py); never shipped. Python 3.9+.
+# CPU wheels are enough: the model is ~90k parameters.
+numpy==2.0.2
+onnx==1.19.1
+pillow==11.3.0
+torch==2.8.0

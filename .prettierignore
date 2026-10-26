@@ -4,3 +4,6 @@ playwright-report
 test-results
 package-lock.json
 tests/fixtures
+tools/train/.venv
+tools/train/data
+tools/train/out

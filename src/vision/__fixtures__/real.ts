@@ -121,11 +121,21 @@ export function listRealFixtures(dir: string): RealFixture[] {
   return fixtures.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** One scored fixture: `passed` out of `total` (1/1 for a board, n/81 for cells). */
-export type Score = { truth: RealTruth; passed: number; total: number };
+/**
+ * One scored fixture: `passed` out of `total` (1/1 for a board, n/81 for cells).
+ * `truth` is a RealTruth, or just tags for a synthetic image (no split).
+ */
+export type Score = {
+  truth: { split?: string; tags: readonly string[] };
+  passed: number;
+  total: number;
+};
 export type Tally = { passed: number; total: number; fixtures: number };
 
-/** Totals per split and per tag. A fixture counts once under its split and under each tag. */
+/**
+ * Totals per split and per tag. A fixture counts once under its split (if it has one)
+ * and under each tag.
+ */
 export function tally(scores: Score[]): { split: Map<string, Tally>; tag: Map<string, Tally> } {
   const split = new Map<string, Tally>();
   const tag = new Map<string, Tally>();
@@ -134,23 +144,25 @@ export function tally(scores: Score[]): { split: Map<string, Tally>; tag: Map<st
     m.set(key, { passed: t.passed + s.passed, total: t.total + s.total, fixtures: t.fixtures + 1 });
   };
   for (const s of scores) {
-    add(split, s.truth.split, s);
+    if (s.truth.split) add(split, s.truth.split, s);
     for (const t of s.truth.tags) add(tag, t, s);
   }
   const sorted = (m: Map<string, Tally>) => new Map([...m].sort(([a], [b]) => a.localeCompare(b)));
   return { split: sorted(split), tag: sorted(tag) };
 }
 
-/** Plain-text table of a tally, e.g. for console output. */
+/** Plain-text table of a tally, e.g. for console output. The split section is left out when no score has a split. */
 export function formatTally(title: string, scores: Score[]): string {
   const { split, tag } = tally(scores);
   const width = Math.max(5, ...[...split.keys(), ...tag.keys()].map((k) => k.length));
+  const pct = (t: Tally) => (100 * t.passed) / t.total;
   const row = (k: string, t: Tally) =>
-    `  ${k.padEnd(width)}  ${`${t.passed}/${t.total}`.padStart(7)}  ${((100 * t.passed) / t.total).toFixed(0).padStart(3)}%`;
+    `  ${k.padEnd(width)}  ${`${t.passed}/${t.total}`.padStart(11)}  ${pct(t)
+      .toFixed(pct(t) === 100 || pct(t) < 90 ? 0 : 1)
+      .padStart(5)}%`;
   return [
     title,
-    " by split:",
-    ...[...split].map(([k, t]) => row(k, t)),
+    ...(split.size ? [" by split:", ...[...split].map(([k, t]) => row(k, t))] : []),
     " by tag:",
     ...[...tag].map(([k, t]) => row(k, t)),
   ].join("\n");

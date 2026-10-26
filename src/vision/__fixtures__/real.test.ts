@@ -103,6 +103,12 @@ describe("tally", () => {
     expect(tag.get("clean")).toEqual({ passed: 82, total: 82, fixtures: 2 });
   });
 
+  it("leaves the split section out when no score has a split", () => {
+    const text = formatTally("synthetic", [{ truth: { tags: ["rot"] }, passed: 80, total: 81 }]);
+    expect(text).not.toContain("by split:");
+    expect(text).toMatch(/rot\s+80\/81\s+98\.8%/);
+  });
+
   it("formats a readable table", () => {
     const text = formatTally("detection", scores);
     expect(text).toContain("by split:");

@@ -66,7 +66,9 @@ Done when: warped boards look correct on the synthetic set and on the real photo
 - [x] Split the warped board into 81 cells, crop margins to remove grid lines
   - Find each cell's boundaries locally (e.g., the grid line positions near the expected 50 px spacing) rather than assuming a flat 50 px grid, so bowed pages work (`curved-page` photos are off by up to 12 px)
   - `src/vision/cells.ts`: lighting flattened by a grey-level closing; each grid line traced band by band (dynamic programming, within 15 px of flat and 5 px per band); crops inset 15% and resampled to 32x32. Follows a 12 px synthetic bow within 3 px; checked visually on book-211 and book-212.
-- [ ] Implement blank vs. digit detection (e.g., ink fraction in the center region)
+- [x] Implement blank vs. digit detection (e.g., ink fraction in the center region)
+  - `src/vision/blank.ts`: a digit is a 4-connected ink blob of at least 20 px in the crop's centre, ink being darker than 0.8 of the local paper (lighting already divided out). Set on synthetic + split=train only. Show-through (book-509, book-529) stays blank.
+  - Blank/digit accuracy (`src/vision/cells.fixtures.test.ts`): synthetic 19440/19440 cells (full set) and 1620/1620 (sample); real 1377/1377 (test 567/567, train 810/810, `curved-page` 243/243, `shadow-hard` 243/243). With EXIF applied, every real board warps upright.
 - [ ] Write `tools/train/train.py`: generate digit crops from fonts with augmentation, train a small CNN, export `model.onnx`
 - [ ] Integrate onnxruntime-web, loading the model lazily; return digit and confidence per cell
 - [ ] Add `npm run eval:vision` reporting cell accuracy and full-board accuracy on synthetic and real sets, with real results per split and per tag (`tally()` in `src/vision/__fixtures__/real.ts`); headline real numbers come from `split=test` only

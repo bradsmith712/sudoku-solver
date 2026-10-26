@@ -1,5 +1,6 @@
 // Public surface of src/vision. Nothing here imports OpenCV.js statically; it is
 // loaded on the first call that needs it.
+export { isDigit } from "./blank";
 export { detectBoard, warpBoardAt, type DetectedBoard } from "./board";
 export { CELL_SIZE, extractCells, type Cell } from "./cells";
 export { ScanError, type ScanErrorCode } from "./errors";

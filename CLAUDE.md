@@ -6,6 +6,7 @@ Client-side web app: photo of a sudoku in, solved grid out. Full requirements ar
 
 - `npm run dev`: start Vite dev server
 - `npm test`: Vitest unit tests
+- `npm run test:fast`: the fast unit tests (what the pre-commit hook runs)
 - `npm run test:e2e`: Playwright end-to-end tests
 - `npm run lint`: ESLint and Prettier check
 - `npm run typecheck`: `tsc --noEmit`
@@ -24,10 +25,11 @@ Client-side web app: photo of a sudoku in, solved grid out. Full requirements ar
 
 ## Rules
 
-- Never commit with failing checks. Run `npm run check` first.
+- Never commit with failing checks. Run `npm run check` first. Commits also go through `.githooks/pre-commit` (lint, typecheck, `npm run test:fast`; enabled by `npm install`); never bypass it with `--no-verify`.
 - After any change to code, run the relevant tests and fix failures before stopping.
 - Do not change the types in `src/types.ts` without updating `SPEC.md` and every module that uses them.
 - Keep `src/solver` free of browser APIs so it stays fast to test.
+- Scripts that load OpenCV.js must run under vitest or the require-based loader (`src/vision/__fixtures__/node-opencv.ts`); they hang under vite-node.
 - Use OpenCV.js `Mat` objects carefully: always `.delete()` them to avoid memory leaks. Use a try/finally.
 - Do not add runtime network calls, third-party CDNs, analytics, or API keys.
 - Do not add dependencies without a reason; mention each new one in the commit message. Watch bundle size.

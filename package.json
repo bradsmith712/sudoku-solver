@@ -6,12 +6,14 @@
   "scripts": {
     "dev": "vite",
     "test": "vitest run --passWithNoTests",
+    "test:fast": "vitest run --exclude 'src/vision/*.fixtures.test.ts' --exclude src/vision/memory.test.ts --exclude src/vision/scan.test.ts --exclude '**/*.eval.test.ts'",
     "eval:vision": "EVAL_VISION=1 vitest run src/vision/vision.eval.test.ts tests/eval/end-to-end.eval.test.ts",
     "test:e2e": "playwright test",
     "lint": "eslint . && prettier --check .",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
-    "check": "npm run lint && npm run typecheck && npm test && npm run build"
+    "check": "npm run lint && npm run typecheck && npm test && npm run build",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

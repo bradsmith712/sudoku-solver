@@ -1,0 +1,9 @@
+#!/bin/sh
+# Fast checks before every commit (activated by `npm install` via the prepare script).
+# The slow suites (fixture and real-photo vision tests, build, e2e) run in CI with
+# `npm run check` and `npm run test:e2e`. Do not bypass with --no-verify.
+set -e
+echo "pre-commit: lint, typecheck, fast unit tests"
+npm run --silent lint
+npm run --silent typecheck
+npm run --silent test:fast

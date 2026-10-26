@@ -169,7 +169,7 @@ Done when: the public HTTPS URL works on a phone and can be installed to the hom
 - [ ] Detection screen with draggable crop corners and adjustment controls
   - Deferred from Phase 6: needs an optional `corners?` field in `ScanResult` plus a `SPEC.md` update. Intended as the manual recovery path when detection returns `no_board_found`.
 - [ ] Handwritten digit support with accuracy comparison
-- [ ] Step-by-step hint mode with the solving activity log, Solved screen (View steps, Solve another) and a step-by-step screen: board above an explanation card, sticky Previous/Next controls
+- [x] Step-by-step hint mode with the solving activity log, Solved screen (View steps, Solve another) and a step-by-step screen: board above an explanation card, sticky Previous/Next controls
   - [x] Step engine `generateSteps(grid)` in `src/solver/steps.ts`: naked single, hidden single, pointing/claiming, naked pair, hidden pair, else a labelled trial-and-error fallback; explanations built from the board at each step; deterministic
     - Independent checker (`steps.test.ts`) verifies every step when it is made, that no simpler technique was available, and the facts in single-step explanations; replay reaches the solution on all 33 solvable fixtures, the 17 real grids (when present) and 198 seeded symmetry variants. It caught six injected engine bugs.
     - Logic alone solves 30/33 fixtures (easy 10/10, medium 10/10, hard 8/10, hard-known 2/3) and 15/17 real grids. The fallback is needed by hard-05 (1 of 58 steps), hard-08 (2 of 60), hard-known-01 (5 of 67), book-532 (1 of 60) and book-534 (1 of 75). Slowest `generateSteps`: hard-known-01, about 3 ms.
@@ -178,7 +178,7 @@ Done when: the public HTTPS URL works on a phone and can be installed to the hom
     - Board above the explanation card (technique, "Logical deduction" or "Trial and error" badge, candidates of the target cell), activity log of every step (tap to jump), sticky Previous / Step N of M / Next; arrow keys, Home and End; `aria-live="polite"` explanation; highlight fade off under `prefers-reduced-motion`. Two columns from 1024px.
     - Bundled eagerly so it works offline with manual entry: entry chunk 7.8 -> 12.1 KB gzip JS, CSS 1.9 -> 2.6 KB gzip (+5.1 KB in total).
   - [x] Playwright e2e for the steps flow (`tests/e2e/steps.spec.ts`); SPEC.md feature 11 and Design notes updated
-  - [ ] Optional: Hint button for the current board
+  - [x] Optional: Hint button for the current board (entry and review): shows the next step and selects its cell without filling it in (`src/ui/steps/hint.ts`). Entry chunk with Hint: 12.4 KB gzip JS, 2.7 KB CSS (+5.3 KB over the 7.8 + 1.9 KB before steps).
 - [ ] Landing page with a single-column mobile hero, prominent Scan button and Sudoku preview
 - [ ] Optional Claude vision fallback via a rate-limited proxy, compared against the local pipeline in the README
 

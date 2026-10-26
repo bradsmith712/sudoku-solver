@@ -117,6 +117,34 @@ test("trial-and-error steps are labelled as such", async ({ page }) => {
   expect(await readSteps(page)).toEqual(hard.solution);
 });
 
+test("Hint shows the next step for the current board without filling it in", async ({ page }) => {
+  await enter(page, EASY.grid);
+  await page.getByRole("button", { name: "Hint" }).click();
+  const first = EASY_STEPS[0];
+  const p = first.placements[0];
+  const message = page.getByTestId("message");
+  await expect(message).toHaveText(
+    `Hint · ${first.title} at row ${p.row + 1}, column ${p.col + 1}: ${first.explanation}`,
+  );
+  const target = mainCell(page, p.row * 9 + p.col);
+  await expect(target).toHaveClass(/selected/);
+  await expect(target).toHaveText("");
+
+  // Filling it in clears the hint; the next hint is for the new board.
+  await page.keyboard.press(String(p.digit));
+  await expect(message).toHaveText("");
+  await page.getByRole("button", { name: "Hint" }).click();
+  const after = EASY.grid.map((row) => [...row]);
+  after[p.row][p.col] = p.digit;
+  await expect(message).toContainText(generateSteps(after)[0].explanation);
+
+  // A board that breaks the rules gets the usual message instead.
+  await mainCell(page, 0).click();
+  await page.keyboard.press(String(EASY.grid[0].find((d, c) => d && c > 0)));
+  await page.getByRole("button", { name: "Hint" }).click();
+  await expect(message).toContainText("repeated digit");
+});
+
 test("respects prefers-reduced-motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await solveAndOpenSteps(page, EASY.grid);

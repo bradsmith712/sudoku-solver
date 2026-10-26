@@ -21,6 +21,7 @@ import { createNumberPad } from "./pad";
 import { createPhotoInput } from "./photo";
 import { cacheScanAssets, needsConnection, scanAssetsStatus, type AssetsStatus } from "./offline";
 import { preloadScanner, scanPhoto, type ScanOutcome } from "./scanner";
+import { hintCell, hintText, nextHint } from "./steps/hint";
 import { createStepsView } from "./steps/view";
 
 /** SPEC.md feature 7: cells under this confidence are highlighted for review. */
@@ -144,12 +145,14 @@ export function mountApp(root: HTMLElement): void {
           </label>
           <p class="message" role="status" aria-live="polite" data-testid="message"></p>
           <div class="pad-slot" data-show="entry review"></div>
-          <div class="actions" data-show="entry">
+          <div class="actions with-hint" data-show="entry">
             <button type="button" data-action="clear">Clear</button>
+            <button type="button" data-action="hint">Hint</button>
             <button type="button" class="primary" data-action="solve">Solve</button>
           </div>
-          <div class="actions" data-show="review">
+          <div class="actions with-hint" data-show="review">
             <button type="button" data-action="rescan">New photo</button>
+            <button type="button" data-action="hint">Hint</button>
             <button type="button" class="primary" data-action="solve">Solve puzzle</button>
           </div>
           <div class="actions solved-actions" data-show="solved">
@@ -189,7 +192,7 @@ export function mountApp(root: HTMLElement): void {
   const uploadInput = createPhotoInput(false, startScan);
   root.append(cameraInput, uploadInput);
 
-  function setMessage(text: string, kind: "" | "error" | "success" | "warning" = "") {
+  function setMessage(text: string, kind: "" | "error" | "success" | "warning" | "hint" = "") {
     message.textContent = text;
     message.dataset.kind = kind;
   }
@@ -258,7 +261,7 @@ export function mountApp(root: HTMLElement): void {
     // The user has now looked at this cell: it is theirs, not the scan's.
     low.delete(key(r, c));
     changed.delete(key(r, c));
-    if (solution) {
+    if (solution || message.dataset.kind === "hint") {
       solution = null;
       setMessage("");
     }
@@ -392,6 +395,19 @@ export function mountApp(root: HTMLElement): void {
       render();
     },
     solve: doSolve,
+    hint: () => {
+      const h = nextHint(givens);
+      if (h.status !== "solved")
+        setMessage(MESSAGES[h.status], h.status === "multiple" ? "warning" : "error");
+      else if (!h.step) setMessage("Every cell is already filled in.");
+      else {
+        const { row, col } = hintCell(h.step);
+        grid.select(row, col);
+        grid.el.focus({ preventScroll: true }); // so a typed digit goes into the hinted cell
+        setMessage(hintText(h.step), "hint");
+      }
+      render();
+    },
     steps: () => {
       $(".steps-slot").appendChild(stepsView.el);
       stepsView.open(givens);

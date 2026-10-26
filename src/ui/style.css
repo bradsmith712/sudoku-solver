@@ -282,6 +282,19 @@ button:active {
   gap: 8px;
 }
 
+.actions.with-hint {
+  grid-template-columns: 1fr 1fr 2fr;
+}
+
+.message[data-kind="hint"] {
+  text-align: left;
+  font-size: 0.9rem;
+  color: #1e3a8a;
+  background: #eff6ff;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
 /* Solved: View solving steps across the top, the two secondary actions below. */
 .actions.solved-actions {
   grid-template-columns: 1fr 1fr;
@@ -481,6 +494,7 @@ canvas.original {
   }
 
   .actions,
+  .actions.with-hint,
   .actions.solved-actions {
     grid-template-columns: 1fr;
   }

@@ -177,7 +177,7 @@ Done when: the public HTTPS URL works on a phone and can be installed to the hom
   - [x] Step-by-step screen and activity log (`src/ui/steps/`)
     - Board above the explanation card (technique, "Logical deduction" or "Trial and error" badge, candidates of the target cell), activity log of every step (tap to jump), sticky Previous / Step N of M / Next; arrow keys, Home and End; `aria-live="polite"` explanation; highlight fade off under `prefers-reduced-motion`. Two columns from 1024px.
     - Bundled eagerly so it works offline with manual entry: entry chunk 7.8 -> 12.1 KB gzip JS, CSS 1.9 -> 2.6 KB gzip (+5.1 KB in total).
-  - [ ] Playwright e2e for the steps flow; SPEC.md updated
+  - [x] Playwright e2e for the steps flow (`tests/e2e/steps.spec.ts`); SPEC.md feature 11 and Design notes updated
   - [ ] Optional: Hint button for the current board
 - [ ] Landing page with a single-column mobile hero, prominent Scan button and Sudoku preview
 - [ ] Optional Claude vision fallback via a rate-limited proxy, compared against the local pipeline in the README

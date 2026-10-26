@@ -23,7 +23,7 @@ Style stays minimal. **Design mobile first:** scanning a physical puzzle is a pr
 | 7. Solved           | Completed board first, then View steps and Solve another                          |
 | 8. Step-by-step     | Board above an explanation card, sticky Previous/Next controls                    |
 
-Screens 6 and 8 (activity log, step-by-step) are not in the v1 scope; see Stretch goals. Screens 2, 4, 5 and 8 need the most care for responsive behavior.
+Screens 7 and 8 and the activity log are built (feature 11). Screen 6 is not: solving takes milliseconds, so there is no progress to show, and the activity log lives on the step-by-step screen instead. Screens 2, 4, 5 and 8 need the most care for responsive behavior.
 
 ### Responsive breakpoints
 
@@ -39,7 +39,7 @@ Screens 6 and 8 (activity log, step-by-step) are not in the v1 scope; see Stretc
 2. **No system keyboard.** Tapping a cell must not open the OS keyboard; use the custom number pad. It is more predictable and avoids layout shift.
 3. **Native-feeling camera.** Full-screen camera view, corner-detection overlay, large shutter button, easy switch to the photo library. After capture, advance automatically to the detection preview. The file input in feature 8 remains the baseline and fallback.
 4. **Thumb-friendly learning controls.** Explanations sit below the grid, and Previous/Next stay anchored to the bottom.
-5. **One shared `SudokuGrid` component** with a `mode` prop (editable, highlighting, candidate numbers, read-only) reused for detection, editing, solving, results and explanations.
+5. **One shared `SudokuGrid` component** with a `mode` prop (editable, highlight, read-only, steps) reused for detection, editing, solving, results and explanations. The steps mode marks a step's target and pattern cells, its row, column or box, the cells losing candidates and the new digit; the target's candidates are shown in the explanation card, not as pencil marks on the board.
 
 **Contract impact:** draggable crop corners need the detected corners exposed before warping, and a manual re-warp from user-adjusted corners. `scan()` and `ScanResult` as written do not provide this. Adding it means changing `src/types.ts`, so it requires updating this file and every module that uses the types, and telling the owner first.
 
@@ -90,13 +90,14 @@ Modules are independent and communicate only through these types: `src/solver`, 
 8. **Camera input:** a file input with `accept="image/*"` and `capture="environment"` to open the phone camera. Resize large images to a max of about 1024px before processing. A full-screen live camera view (see Design rules) is an enhancement on top of this and must fall back to the file input when camera access is unavailable or denied.
 9. **PWA:** web manifest, icons, service worker with offline caching of the app shell and model.
 10. **Errors:** friendly messages for no board found, invalid grid after scan, and unsolvable puzzle, each with a retry path. A scan too wrong to review cell by cell (8 or more conflicting cells that repair cannot fix, or mean digit confidence under 0.8, usually a board detected out of position) gets "couldn't read this, try again" instead of the review screen, with a "Review anyway" option. Cut-offs set on synthetic and split=train data only (`src/ui/retake.ts`).
+11. **Step-by-step explanations:** `generateSteps(grid)` (`src/solver/steps.ts`, pure) returns the moves from the givens to the unique solution, always the simplest available, in this order: naked single, hidden single, pointing / box-line claim, naked pair, hidden pair. Each step lists its placement or candidate eliminations, the cells and units to highlight, and an explanation built from the board at that moment. When none applies, the step is labelled trial and error ("No simple pattern applies here; this digit comes from trial and error.") and places the solver's digit for the most constrained cell; it never gives an invented reason. Output is deterministic. Manual and scanned solves both open the Solved screen (View solving steps, Edit puzzle, Solve another); the step-by-step screen shows the board above the explanation card, the activity log (tap a step to jump to it) and sticky Previous/Next, with arrow keys, `aria-live="polite"` explanations and reduced motion respected. It is bundled with the app shell so it works offline. Throws for grids without exactly one solution.
 
 ## Performance and size
 
 - Scan to review screen in under 3 seconds on a mid-range phone for a 1024px image.
 - Lazy-load OpenCV.js and the model only when the user first scans. The manual-entry path must work instantly. Loading starts when the user taps Scan or Upload, so it overlaps taking or picking the photo.
 - Self-host OpenCV.js and the model file (no runtime dependency on a third-party CDN).
-- Solving any valid puzzle takes under 100 ms.
+- Solving any valid puzzle takes under 100 ms; so does `generateSteps`.
 
 ## Done criteria (all must pass)
 
@@ -120,4 +121,4 @@ Modules are independent and communicate only through these types: `src/solver`, 
 - Overlay the solution on the original photo with the homography.
 - Handwritten digits (train on a handwriting set and compare).
 - Optional Claude vision fallback behind a rate-limited proxy, with an accuracy comparison in the README. Not part of the default build.
-- Step-by-step hint mode that explains the next logical move (screens 6 to 8 in Design: activity log, solved view with View steps, step-by-step with explanation card and sticky Previous/Next).
+- Step-by-step hint mode that explains the next logical move (screens 6 to 8 in Design: activity log, solved view with View steps, step-by-step with explanation card and sticky Previous/Next). Done: see feature 11.

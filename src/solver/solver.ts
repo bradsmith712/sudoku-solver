@@ -5,24 +5,25 @@ export type SolveResult = { status: SolveStatus; solution?: Grid };
 
 const ALL = 0x1ff; // bits 0-8 represent digits 1-9
 
-const ROW = new Uint8Array(81);
-const COL = new Uint8Array(81);
-const BOX = new Uint8Array(81);
+/** Row, column and box (0-8, boxes row-major) of each cell index 0-80. */
+export const ROW = new Uint8Array(81);
+export const COL = new Uint8Array(81);
+export const BOX = new Uint8Array(81);
 for (let i = 0; i < 81; i++) {
   ROW[i] = Math.floor(i / 9);
   COL[i] = i % 9;
   BOX[i] = Math.floor(ROW[i] / 3) * 3 + Math.floor(COL[i] / 3);
 }
 
-/** The 27 units (9 rows, 9 columns, 9 boxes), each as a list of 9 cell indices. */
-const UNITS: number[][] = Array.from({ length: 27 }, () => []);
+/** The 27 units (rows 0-8, columns 9-17, boxes 18-26), each as a list of 9 cell indices. */
+export const UNITS: number[][] = Array.from({ length: 27 }, () => []);
 for (let i = 0; i < 81; i++) {
   UNITS[ROW[i]].push(i);
   UNITS[9 + COL[i]].push(i);
   UNITS[18 + BOX[i]].push(i);
 }
 
-const PEERS: number[][] = Array.from({ length: 81 }, (_, i) => {
+export const PEERS: number[][] = Array.from({ length: 81 }, (_, i) => {
   const set = new Set<number>();
   for (const u of [ROW[i], 9 + COL[i], 18 + BOX[i]])
     for (const c of UNITS[u]) if (c !== i) set.add(c);

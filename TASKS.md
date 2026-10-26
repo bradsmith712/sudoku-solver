@@ -170,6 +170,13 @@ Done when: the public HTTPS URL works on a phone and can be installed to the hom
   - Deferred from Phase 6: needs an optional `corners?` field in `ScanResult` plus a `SPEC.md` update. Intended as the manual recovery path when detection returns `no_board_found`.
 - [ ] Handwritten digit support with accuracy comparison
 - [ ] Step-by-step hint mode with the solving activity log, Solved screen (View steps, Solve another) and a step-by-step screen: board above an explanation card, sticky Previous/Next controls
+  - [x] Step engine `generateSteps(grid)` in `src/solver/steps.ts`: naked single, hidden single, pointing/claiming, naked pair, hidden pair, else a labelled trial-and-error fallback; explanations built from the board at each step; deterministic
+    - Independent checker (`steps.test.ts`) verifies every step when it is made, that no simpler technique was available, and the facts in single-step explanations; replay reaches the solution on all 33 solvable fixtures, the 17 real grids (when present) and 198 seeded symmetry variants. It caught six injected engine bugs.
+    - Logic alone solves 30/33 fixtures (easy 10/10, medium 10/10, hard 8/10, hard-known 2/3) and 15/17 real grids. The fallback is needed by hard-05 (1 of 58 steps), hard-08 (2 of 60), hard-known-01 (5 of 67), book-532 (1 of 60) and book-534 (1 of 75). Slowest `generateSteps`: hard-known-01, about 3 ms.
+  - [ ] Shared grid `steps` mode; manual Solve also opens the Solved screen, with View solving steps
+  - [ ] Step-by-step screen and activity log (`src/ui/steps/`)
+  - [ ] Playwright e2e for the steps flow; SPEC.md updated
+  - [ ] Optional: Hint button for the current board
 - [ ] Landing page with a single-column mobile hero, prominent Scan button and Sudoku preview
 - [ ] Optional Claude vision fallback via a rate-limited proxy, compared against the local pipeline in the README
 

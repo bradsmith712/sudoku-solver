@@ -104,7 +104,8 @@ Done when: `eval:vision` meets the thresholds in `SPEC.md`.
   - Solved digits are drawn in blue on the warped board image; the givens show through from the photo.
 - [x] Add friendly error states and retry for no board found, invalid grid, and unsolvable puzzle
   - No board found: error card with Try another photo / Upload image / Enter manually. Scanner load failure: also Retry. Invalid, unsolvable and multiple-solution grids stay on review with a message and the cells highlighted, plus New photo.
-- [ ] Playwright test: upload a fixture photo, correct one cell, solve, assert the solution is valid
+- [x] Playwright test: upload a fixture photo, correct one cell, solve, assert the solution is valid
+  - `tests/e2e/scan.spec.ts`: upload `synth-upright`, mistype then correct a cell, solve, valid solution keeping the givens, drawn over the photo; `synth-rot90`, `synth-rot180` and `synth-exif6` read upright; the EXIF photo is decoded at 1024x768 (EXIF applied, resized); a repaired cell is marked and can be undone; no-board errors offer retry and manual entry; one split=train real photo (skipped when `tests/fixtures/real` is absent).
 - [ ] Measure scan time; optimize until under 3 seconds on a mid-range phone for a 1024px image
 
 Done when: in a real browser, a photo uploaded or captured through the file input is scanned and auto-oriented, the review screen shows it with low-confidence, conflicting and repaired cells highlighted and editable, and Solve shows the solution over the warped board. The live camera view and corner adjustment are deferred to Stretch.

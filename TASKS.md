@@ -63,8 +63,9 @@ Done when: warped boards look correct on the synthetic set and on the real photo
 
 ## Phase 5: Cell extraction and digit recognition
 
-- [ ] Split the warped board into 81 cells, crop margins to remove grid lines
+- [x] Split the warped board into 81 cells, crop margins to remove grid lines
   - Find each cell's boundaries locally (e.g., the grid line positions near the expected 50 px spacing) rather than assuming a flat 50 px grid, so bowed pages work (`curved-page` photos are off by up to 12 px)
+  - `src/vision/cells.ts`: lighting flattened by a grey-level closing; each grid line traced band by band (dynamic programming, within 15 px of flat and 5 px per band); crops inset 15% and resampled to 32x32. Follows a 12 px synthetic bow within 3 px; checked visually on book-211 and book-212.
 - [ ] Implement blank vs. digit detection (e.g., ink fraction in the center region)
 - [ ] Write `tools/train/train.py`: generate digit crops from fonts with augmentation, train a small CNN, export `model.onnx`
 - [ ] Integrate onnxruntime-web, loading the model lazily; return digit and confidence per cell

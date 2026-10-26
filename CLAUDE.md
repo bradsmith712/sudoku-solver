@@ -25,7 +25,7 @@ Client-side web app: photo of a sudoku in, solved grid out. Full requirements ar
 
 ## Rules
 
-- Never commit with failing checks. Run `npm run check` first. Commits also go through `.githooks/pre-commit` (lint, typecheck, `npm run test:fast`; enabled by `npm install`); never bypass it with `--no-verify`.
+- Never commit with failing checks. Run `npm run check` first. Gate the commit on the check's exit code: `npm run check && git commit ...`, never `;`, an `echo`/`grep`, or a background run between them. A check that fails under load is a failure until it passes on a rerun. Commits also go through `.githooks/pre-commit` (lint, typecheck, `npm run test:fast`; enabled by `npm install`); never bypass it with `--no-verify`.
 - After any change to code, run the relevant tests and fix failures before stopping.
 - Do not change the types in `src/types.ts` without updating `SPEC.md` and every module that uses them.
 - Keep `src/solver` free of browser APIs so it stays fast to test.

@@ -36,14 +36,44 @@ body {
   display: none !important;
 }
 
+/* Brand centred with a back button on the left; on home, brand on the left alone. */
 .topbar {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
   height: 52px;
   padding: 0 16px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+}
+
+[data-screen="home"] .topbar,
+[data-screen="scanning"] .topbar {
+  justify-content: flex-start;
+}
+
+.topbar .back {
+  position: absolute;
+  left: 4px;
+  width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+}
+
+.icon,
+.chev {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+
+.chev {
+  width: 18px;
+  height: 18px;
 }
 
 .brand {
@@ -312,10 +342,167 @@ button.primary {
 
 /* ---- photo flow ---- */
 
-.sources {
+/* ---- home (docs/mockups-home.png) ---- */
+
+.home {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding-top: 4px;
+}
+
+.home h1 {
+  margin: 0;
+  font-size: clamp(2.1rem, 10vw, 2.6rem);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  font-weight: 800;
+  color: var(--brand-ink);
+}
+
+.home h1 span {
+  display: block;
+  color: var(--solved);
+}
+
+.home-copy p {
+  margin: 12px 0 0;
+  color: #4b5563;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.home-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.home-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 56px;
+  border-radius: 12px;
+  font-size: 1.05rem;
+}
+
+.home-actions button.link {
+  min-height: 44px;
+  gap: 4px;
+  border: 0;
+  background: none;
+  color: var(--solved);
+  font-weight: 600;
+}
+
+.hero {
+  margin: 0;
+}
+
+.hero-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 18px 0;
+  border-radius: 16px;
+  background: #eef4ff;
+  perspective: 900px;
+  overflow: hidden;
+}
+
+/* The table under the "photo"; fades out as the board flattens. */
+.hero-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(100deg, transparent 0 22px, rgb(90 55 25 / 0.08) 22px 24px),
+    linear-gradient(135deg, #c9a273, #a77b4f);
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+
+.hero .board {
+  width: 280px;
+  max-width: 100%;
+  border-radius: 2px;
+  transition:
+    transform 0.7s ease,
+    box-shadow 0.7s ease,
+    background-color 0.7s ease,
+    opacity 0.4s ease;
+}
+
+.hero .cell {
+  font-size: 1.1rem;
+  transition: border-color 0.7s ease;
+}
+
+.hero.fading .board {
+  opacity: 0;
+}
+
+.hero[data-phase="photo"] .hero-stage::before {
+  opacity: 1;
+}
+
+.hero[data-phase="photo"] .board {
+  --line: #c4baa8;
+  --box-line: #4a4238;
+  --given: #2b2620;
+  transform: rotateX(16deg) rotateZ(-5deg) scale(0.9);
+  background: #f6f1e6;
+  box-shadow: 0 22px 30px -14px rgb(50 30 10 / 0.55);
+}
+
+.hero[data-phase="photo"] .cell.given {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+}
+
+.hero-phases {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: center;
+  counter-reset: phase;
+}
+
+.hero-phases li {
+  display: grid;
+  gap: 2px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  opacity: 0.55;
+  transition: opacity 0.3s ease;
+}
+
+.hero-phases b {
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+
+.hero-phases b::before {
+  counter-increment: phase;
+  content: counter(phase) ". ";
+}
+
+.hero[data-phase="photo"] li[data-phase="photo"],
+.hero[data-phase="solve"] li[data-phase="solve"],
+.hero[data-phase="explore"] li[data-phase="explore"],
+.hero[data-phase="still"] li {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero .board,
+  .hero .cell,
+  .hero-stage::before {
+    transition: none;
+  }
 }
 
 .status-card,
@@ -467,6 +654,22 @@ canvas.original {
   .pad {
     grid-template-columns: repeat(10, 1fr);
   }
+
+  .hero .board {
+    width: 340px;
+  }
+
+  .hero .cell {
+    font-size: 1.3rem;
+  }
+
+  .home-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .home-actions .link {
+    grid-column: 1 / -1;
+  }
 }
 
 /* ---- desktop: board left, controls right ---- */
@@ -498,8 +701,48 @@ canvas.original {
     grid-template-columns: 1fr;
   }
 
-  .sources {
-    max-width: 520px;
+  /* Copy and buttons on the left, the illustration on the right. */
+  .home {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 440px);
+    grid-template-rows: 1fr auto auto 1fr;
+    grid-template-areas:
+      ". hero"
+      "copy hero"
+      "actions hero"
+      ". hero";
+    gap: 0 48px;
+    padding-top: 24px;
+  }
+
+  .home-copy {
+    grid-area: copy;
+    margin-bottom: 28px;
+  }
+
+  .home h1 {
+    font-size: 3.4rem;
+  }
+
+  .home-copy p {
+    font-size: 1.15rem;
+  }
+
+  .home .hero-slot {
+    grid-area: hero;
+  }
+
+  .home-actions {
+    grid-area: actions;
+    grid-template-columns: 1fr;
+    max-width: 380px;
+  }
+
+  .hero .board {
+    width: 380px;
+  }
+
+  .hero .cell {
+    font-size: 1.45rem;
   }
 
   .status-card,

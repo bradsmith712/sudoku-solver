@@ -6,7 +6,7 @@ A web app that runs entirely in the browser. The user takes or uploads a photo o
 
 ## Design
 
-Visual reference for the UI: `docs/mockups.png` (desktop). Layout and flow should follow it; where it conflicts with the written requirements in this file, this file wins. Dedicated 390px mobile mockups for all eight screens are owner-supplied (`docs/mockups-mobile.png`); until they exist, follow the rules below.
+Visual reference for the UI: `docs/mockups.png` (desktop). Layout and flow should follow it; where it conflicts with the written requirements in this file, this file wins. Dedicated 390px mobile mockups for all eight screens are owner-supplied (`docs/mockups-mobile.png`). Two later owner mockups supersede them where they overlap: `docs/mockups-home.png` (screen 1) and `docs/mockups-steps.png` (screen 8). The brand is **sudokulens.** (wordmark plus a 3x3 grid of rounded squares).
 
 Style stays minimal. **Design mobile first:** scanning a physical puzzle is a primary feature, so the app should feel like a native camera-first app, not a desktop page squeezed into a narrow screen. Desktop layouts stay largely as in the current mockups.
 
@@ -23,7 +23,7 @@ Style stays minimal. **Design mobile first:** scanning a physical puzzle is a pr
 | 7. Solved           | Completed board first, then View steps and Solve another                          |
 | 8. Step-by-step     | Board above an explanation card, sticky Previous/Next controls                    |
 
-Screens 7 and 8 and the activity log are built (feature 11). Screen 6 is not: solving takes milliseconds, so there is no progress to show, and the activity log lives on the step-by-step screen instead. Screens 2, 4, 5 and 8 need the most care for responsive behavior.
+Screen 1 is built: the app opens on it, with "Every puzzle. Every step.", one animated example board (a tilted paper photo that flattens and fills in its digits in solving order, then highlights a step; static under reduced motion) captioned Your puzzle / We solve it / Explore the steps, and Scan a puzzle, Upload image and Or enter manually. No feature section beneath it. Every other screen has a Back button in the top bar. Screens 7 and 8 and the activity log are built (feature 11). Screen 6 is not: solving takes milliseconds, so there is no progress to show, and the activity log lives on the step-by-step screen instead. Screens 2, 4, 5 and 8 need the most care for responsive behavior.
 
 ### Responsive breakpoints
 

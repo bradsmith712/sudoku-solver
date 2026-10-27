@@ -1,9 +1,13 @@
 /* Step-by-step screen. Mobile first: board, card, log, then the sticky controls. */
-.steps {
+/* On :root, not .steps: the home screen's example board (hero.ts) uses steps mode too. */
+:root {
   --step-focus: #dcfce7;
   --step-focus-edge: #16a34a;
   --step-area: #eff6ff;
   --step-elim: #fee2e2;
+}
+
+.steps {
   display: flex;
   flex-direction: column;
   gap: 12px;

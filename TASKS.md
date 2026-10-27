@@ -179,7 +179,9 @@ Done when: the public HTTPS URL works on a phone and can be installed to the hom
     - Bundled eagerly so it works offline with manual entry: entry chunk 7.8 -> 12.1 KB gzip JS, CSS 1.9 -> 2.6 KB gzip (+5.1 KB in total).
   - [x] Playwright e2e for the steps flow (`tests/e2e/steps.spec.ts`); SPEC.md feature 11 and Design notes updated
   - [x] Optional: Hint button for the current board (entry and review): shows the next step and selects its cell without filling it in (`src/ui/steps/hint.ts`). Entry chunk with Hint: 12.4 KB gzip JS, 2.7 KB CSS (+5.3 KB over the 7.8 + 1.9 KB before steps).
-- [ ] Landing page with a single-column mobile hero, prominent Scan button and Sudoku preview
+- [x] Landing page with a single-column mobile hero, prominent Scan button and Sudoku preview
+  - Home screen per `docs/mockups-home.png` (`src/ui/hero.ts`): one animated example board at every breakpoint (paper photo, flatten, fill in solving order, highlight a step; static under reduced motion, paused when hidden or off the home screen), Scan / Upload / Or enter manually; text left and board right from 1024px. Back button in the top bar elsewhere; Solve another returns home. Rebranded to sudokulens.
+  - Entry chunk 12.52 -> 13.76 KB gzip JS, CSS 2.60 -> 3.42 KB gzip.
 - [ ] Optional Claude vision fallback via a rate-limited proxy, compared against the local pipeline in the README
 
 ## Intervention log (fill in as you go)

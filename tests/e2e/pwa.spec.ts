@@ -79,7 +79,7 @@ function assetsReady(page: Page): Promise<boolean> {
 async function enterAndSolve(page: Page) {
   for (let i = 0; i < 81; i++) {
     if (PUZZLE[i] === "0") continue;
-    await page.locator(".cell").nth(i).click();
+    await page.locator(".workspace .cell").nth(i).click();
     await page.keyboard.press(PUZZLE[i]);
   }
   await page.getByRole("button", { name: "Solve" }).click();
@@ -143,6 +143,7 @@ test("manual entry works offline", async ({ page, context, baseURL }) => {
   await open(page);
   await context.setOffline(true);
   await page.reload();
+  await page.getByRole("button", { name: "Or enter manually" }).click();
   await enterAndSolve(page);
   await context.setOffline(false);
   expectClean(w);

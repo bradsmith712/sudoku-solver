@@ -41,7 +41,7 @@ Client-side web app: photo of a sudoku in, solved grid out. Full requirements ar
 
 ## Design reference
 
-- `docs/mockups.png` is the desktop visual reference for the UI; `docs/mockups-mobile.png` (390px, owner-supplied) is the mobile one. Look at them before any UI work and note deviations in the commit message.
+- `docs/mockups.png` is the desktop visual reference for the UI; `docs/mockups-mobile.png` (390px, owner-supplied) is the mobile one; `docs/mockups-home.png` and `docs/mockups-steps.png` are newer and win for the home and solving-steps screens. Look at them before any UI work and note deviations in the commit message.
 - Design mobile first (breakpoints: under 640px mobile, 640-1023px tablet, 1024px+ desktop). Full rules are in the Design section of `SPEC.md`.
 - Cells are not text inputs: never open the system keyboard on tap; use the custom 1-9 number pad.
 - Reuse one shared `SudokuGrid` component with a `mode` prop for every screen that shows a board; do not fork the grid per screen.

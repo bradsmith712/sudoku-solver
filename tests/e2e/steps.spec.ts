@@ -40,6 +40,7 @@ async function solveAndOpenSteps(page: Page, grid: number[][]) {
 
 test.beforeEach(async ({ page }) => {
   await page.goto("./");
+  await page.getByRole("button", { name: "Or enter manually" }).click();
 });
 
 test("step through a solved puzzle, jump from the log, and end on the solution", async ({
@@ -89,8 +90,12 @@ test("step through a solved puzzle, jump from the log, and end on the solution",
   await page.getByRole("button", { name: "Back to solution" }).click();
   await expect(page.getByTestId("title")).toHaveText("Puzzle solved!");
 
-  // Solve another resets cleanly; a new puzzle's steps start from step 1.
+  // Solve another goes home and resets cleanly; a new puzzle's steps start from step 1.
   await page.getByRole("button", { name: "Solve another" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Every puzzle. Every step." }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Or enter manually" }).click();
   await expect(page.getByTestId("title")).toHaveText("Enter your puzzle");
   await expect(page.getByTestId("message")).toHaveText("");
   expect((await page.locator(".workspace .cell").allTextContents()).every((t) => t === "")).toBe(

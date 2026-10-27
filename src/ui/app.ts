@@ -1,7 +1,8 @@
 /**
  * The app: one page, one shared board (grid.ts) moved between screens.
  *
- *  entry    manual entry (editable); Scan / Upload start the photo flow
+ *  home     landing: animated example board (hero.ts); Scan, Upload, or enter manually
+ *  entry    manual entry (editable)
  *  scanning decode + scan + repair (scanner.ts), vision code loaded lazily
  *  review   the scanned grid (highlight mode): low-confidence, conflicting and
  *           repaired cells marked; tap to edit; undo repairs; Solve
@@ -18,6 +19,7 @@ import { solve, type SolveStatus } from "../solver/solver";
 import type { Grid } from "../types";
 import { createSudokuGrid, type CellState } from "./grid";
 import { createNumberPad } from "./pad";
+import { createHero } from "./hero";
 import { createPhotoInput } from "./photo";
 import { cacheScanAssets, needsConnection, scanAssetsStatus, type AssetsStatus } from "./offline";
 import { preloadScanner, scanPhoto, type ScanOutcome } from "./scanner";
@@ -27,7 +29,7 @@ import { createStepsView } from "./steps/view";
 /** SPEC.md feature 7: cells under this confidence are highlighted for review. */
 export const REVIEW_THRESHOLD = 0.9;
 
-type Screen = "entry" | "scanning" | "review" | "solved" | "steps" | "error";
+type Screen = "home" | "entry" | "scanning" | "review" | "solved" | "steps" | "error";
 
 const emptyGrid = (): Grid => Array.from({ length: 9 }, () => new Array<number>(9).fill(0));
 const key = (r: number, c: number) => `${r},${c}`;
@@ -47,6 +49,18 @@ const REVIEW_HINTS: Record<Exclude<SolveStatus, "solved">, string> = {
     "These digits have no solution, so at least one was misread. Check the highlighted cells against your puzzle.",
   multiple:
     "These digits allow more than one solution, so a digit may be missing. Compare the grid with your puzzle.",
+};
+
+const svg = (body: string, cls = "icon") =>
+  `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+
+const ICON = {
+  camera: svg('<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'),
+  image: svg(
+    '<rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="9" cy="9.5" r="1.5"/><path d="m20 15-4.5-4.5L6 20"/>',
+  ),
+  chevron: svg('<path d="m9 6 6 6-6 6"/>', "chev"),
+  back: svg('<path d="m15 6-6 6 6 6"/>'),
 };
 
 /** The brand mark: a 3x3 grid of rounded squares, as in the app icon. */
@@ -72,6 +86,7 @@ const ERROR_TITLE: Partial<Record<ErrorKind, string>> = {
 };
 
 const SCREEN_TEXT: Record<Screen, [string, string]> = {
+  home: ["Every puzzle. Every step.", ""],
   entry: [
     "Enter your puzzle",
     "Tap a cell, then a number. On a keyboard, type digits and use the arrow keys.",
@@ -90,7 +105,7 @@ const SCREEN_TEXT: Record<Screen, [string, string]> = {
 };
 
 export function mountApp(root: HTMLElement): void {
-  let screen: Screen = "entry";
+  let screen: Screen = "home";
   let givens = emptyGrid();
   let solution: Grid | null = null;
   /** Set while reviewing or showing a scan. */
@@ -104,16 +119,25 @@ export function mountApp(root: HTMLElement): void {
 
   root.innerHTML = `
     <header class="topbar">
+      <button type="button" class="back" data-action="back" aria-label="Back">${ICON.back}</button>
       <span class="brand" role="img" aria-label="sudokulens">${LOGO}<span>sudoku</span><span class="lens">lens.</span></span>
     </header>
     <main class="app">
-      <div class="intro">
+      <section class="home" data-show="home" aria-labelledby="home-title">
+        <div class="home-copy">
+          <h1 id="home-title">Every puzzle. <span>Every step.</span></h1>
+          <p>Snap a photo or upload a Sudoku puzzle. Get the solution instantly, or follow along to see how it's solved.</p>
+        </div>
+        <div class="hero-slot"></div>
+        <div class="home-actions">
+          <button type="button" class="primary" data-action="camera">${ICON.camera}<span>Scan a puzzle</span>${ICON.chevron}</button>
+          <button type="button" data-action="upload">${ICON.image}<span>Upload image</span></button>
+          <button type="button" class="link" data-action="manual">Or enter manually${ICON.chevron}</button>
+        </div>
+      </section>
+      <div class="intro" data-show="entry scanning review solved steps error">
         <h1 data-testid="title"></h1>
         <p data-testid="subtitle"></p>
-      </div>
-      <div class="sources" data-show="entry">
-        <button type="button" class="primary" data-action="camera">Scan a puzzle</button>
-        <button type="button" data-action="upload">Upload image</button>
       </div>
       <div class="status-card" data-show="scanning" role="status" aria-live="polite">
         <span class="spinner" aria-hidden="true"></span>
@@ -194,6 +218,8 @@ export function mountApp(root: HTMLElement): void {
   );
 
   const stepsView = createStepsView({ onBack: () => show("solved") });
+  const hero = createHero();
+  $(".hero-slot").appendChild(hero.el);
 
   const cameraInput = createPhotoInput(true, startScan);
   const uploadInput = createPhotoInput(false, startScan);
@@ -207,6 +233,9 @@ export function mountApp(root: HTMLElement): void {
   function show(next: Screen) {
     screen = next;
     root.dataset.screen = next;
+    $<HTMLButtonElement>(".topbar .back").hidden = next === "home" || next === "scanning";
+    if (next === "home") hero.start();
+    else hero.stop();
     const [title, subtitle] = SCREEN_TEXT[next];
     $("[data-testid=title]").textContent = title;
     $("[data-testid=subtitle]").textContent =
@@ -429,7 +458,14 @@ export function mountApp(root: HTMLElement): void {
     another: () => {
       stepsView.close();
       resetBoard();
-      show("entry");
+      show("home");
+    },
+    back: () => {
+      if (screen === "steps") {
+        stepsView.close();
+        show("solved");
+      } else if (screen === "solved") actions.edit();
+      else actions.another();
     },
     "undo-cell": () => {
       const { row, col } = grid.selected();
@@ -454,5 +490,5 @@ export function mountApp(root: HTMLElement): void {
   navigator.serviceWorker?.addEventListener("controllerchange", () => refreshAssets());
   refreshAssets();
 
-  show("entry");
+  show("home");
 }

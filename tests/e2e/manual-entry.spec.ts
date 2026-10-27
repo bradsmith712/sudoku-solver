@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 const PUZZLE = "530070000600195000098000060800060003400803001700020006060000280000419005000080079";
 
-const cell = (page: Page, i: number) => page.locator(".cell").nth(i);
+const cell = (page: Page, i: number) => page.locator(".workspace .cell").nth(i);
 
 async function enter(page: Page, puzzle: string) {
   for (let i = 0; i < 81; i++) {
@@ -14,7 +14,7 @@ async function enter(page: Page, puzzle: string) {
 }
 
 async function readGrid(page: Page): Promise<number[][]> {
-  const texts = await page.locator(".cell").allTextContents();
+  const texts = await page.locator(".workspace .cell").allTextContents();
   return Array.from({ length: 9 }, (_, r) =>
     texts.slice(r * 9, r * 9 + 9).map((t) => Number(t || 0)),
   );
@@ -32,6 +32,7 @@ function isValid(g: number[][]): boolean {
 
 test.beforeEach(async ({ page }) => {
   await page.goto("./");
+  await page.getByRole("button", { name: "Or enter manually" }).click();
 });
 
 test("enter a puzzle by keyboard, solve, and the displayed solution is valid", async ({ page }) => {
@@ -79,7 +80,7 @@ test("editing after solving drops the solution", async ({ page }) => {
   await expect(cell(page, 0)).toHaveText("5");
   await cell(page, 0).click();
   await page.keyboard.press("Backspace");
-  await expect(page.locator(".cell.solved")).toHaveCount(0);
+  await expect(page.locator(".workspace .cell.solved")).toHaveCount(0);
   await expect(page.getByTestId("message")).toHaveText("");
 });
 
@@ -90,7 +91,7 @@ test("invalid grid shows a message and highlights conflicts", async ({ page }) =
   await page.keyboard.press("5");
   await page.getByRole("button", { name: "Solve" }).click();
   await expect(page.getByTestId("message")).toContainText("repeated digit");
-  await expect(page.locator(".cell.conflict")).toHaveCount(2);
+  await expect(page.locator(".workspace .cell.conflict")).toHaveCount(2);
 });
 
 test("unsolvable grid shows a message", async ({ page }) => {
@@ -110,7 +111,7 @@ test("multiple-solution grid shows a message and no solution", async ({ page }) 
   await page.keyboard.press("1");
   await page.getByRole("button", { name: "Solve" }).click();
   await expect(page.getByTestId("message")).toContainText("more than one solution");
-  await expect(page.locator(".cell.solved")).toHaveCount(0);
+  await expect(page.locator(".workspace .cell.solved")).toHaveCount(0);
 });
 
 test.describe("phone layout", () => {
@@ -126,7 +127,7 @@ test.describe("phone layout", () => {
     );
     expect(overflow).toBeLessThanOrEqual(0);
 
-    const board = await page.locator(".board").boundingBox();
+    const board = await page.locator(".workspace .board").boundingBox();
     expect(board).not.toBeNull();
     expect(board!.width).toBeLessThanOrEqual(375);
     expect(board!.width / 9).toBeGreaterThanOrEqual(30);

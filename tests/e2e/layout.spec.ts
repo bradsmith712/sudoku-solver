@@ -13,6 +13,7 @@ for (const vp of VIEWPORTS) {
   test(`manual entry layout at ${vp.width}px (${vp.name})`, async ({ page }, info) => {
     await page.setViewportSize({ width: vp.width, height: vp.height });
     await page.goto("./");
+    await page.getByRole("button", { name: "Or enter manually" }).click();
     await page.screenshot({ path: info.outputPath(`manual-${vp.width}.png`), fullPage: true });
 
     const overflow = await page.evaluate(
@@ -20,7 +21,7 @@ for (const vp of VIEWPORTS) {
     );
     expect(overflow).toBeLessThanOrEqual(0);
 
-    const board = (await page.locator(".board").boundingBox())!;
+    const board = (await page.locator(".workspace .board").boundingBox())!;
     const pad = (await page.getByRole("group", { name: "Number pad" }).boundingBox())!;
     if (vp.columns === 1) {
       expect(pad.y).toBeGreaterThanOrEqual(board.y + board.height - 1);
@@ -45,13 +46,13 @@ for (const vp of VIEWPORTS) {
     await expect(page.getByTestId("title")).toHaveText("Review the recognized puzzle", {
       timeout: 60_000,
     });
-    await page.locator(".cell.changed").first().click();
+    await page.locator(".workspace .cell.changed").first().click();
     await page.screenshot({ path: info.outputPath(`review-${vp.width}.png`), fullPage: true });
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
-    const board = (await page.locator(".board").boundingBox())!;
+    const board = (await page.locator(".workspace .board").boundingBox())!;
     const pad = (await page.getByRole("group", { name: "Number pad" }).boundingBox())!;
     if (vp.columns === 1) expect(pad.y).toBeGreaterThanOrEqual(board.y + board.height - 1);
     else expect(pad.x).toBeGreaterThanOrEqual(board.x + board.width - 1);

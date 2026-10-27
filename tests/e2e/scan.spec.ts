@@ -12,10 +12,10 @@ type Truth = { grid: number[][] };
 const truth = (name: string, dir = FIXTURES): Truth =>
   JSON.parse(readFileSync(`${dir}${name}.json`, "utf8")) as Truth;
 
-const cell = (page: Page, r: number, c: number) => page.locator(".cell").nth(r * 9 + c);
+const cell = (page: Page, r: number, c: number) => page.locator(".workspace .cell").nth(r * 9 + c);
 
 async function readGrid(page: Page): Promise<number[][]> {
-  const texts = await page.locator(".cell").allTextContents();
+  const texts = await page.locator(".workspace .cell").allTextContents();
   return Array.from({ length: 9 }, (_, r) =>
     texts.slice(r * 9, r * 9 + 9).map((t) => Number(t || 0)),
   );
@@ -64,7 +64,7 @@ test("upload a photo, correct a cell, solve, and the solution is valid", async (
   await page.getByRole("button", { name: "Solve puzzle" }).click();
   await expect(page.getByTestId("message")).toContainText("repeated digit");
   await page.getByRole("button", { name: `Enter ${right}` }).click();
-  await expect(page.locator(".cell.conflict")).toHaveCount(0);
+  await expect(page.locator(".workspace .cell.conflict")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Solve puzzle" }).click();
   await expect(page.getByTestId("title")).toHaveText("Puzzle solved!");
@@ -73,7 +73,7 @@ test("upload a photo, correct a cell, solve, and the solution is valid", async (
   want.forEach((row, i) => row.forEach((v, j) => v && expect(solved[i][j]).toBe(v)));
 
   // Drawn over the warped photo: givens show through, solved digits in another colour.
-  await expect(page.locator(".board")).toHaveClass(/on-photo/);
+  await expect(page.locator(".workspace .board")).toHaveClass(/on-photo/);
   const free = want.flat().findIndex((v) => v === 0);
   const solvedColor = await cell(page, Math.floor(free / 9), free % 9).evaluate(
     (e) => getComputedStyle(e).color,
@@ -82,7 +82,9 @@ test("upload a photo, correct a cell, solve, and the solution is valid", async (
   expect(solvedColor).not.toBe(givenColor);
 
   await page.getByRole("button", { name: "Solve another" }).click();
-  await expect(page.getByTestId("title")).toHaveText("Enter your puzzle");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Every puzzle. Every step." }),
+  ).toBeVisible();
 });
 
 for (const name of ["synth-rot90", "synth-rot180", "synth-exif6"]) {
@@ -99,14 +101,14 @@ test("a repaired cell is shown as changed and can be undone", async ({ page }) =
   await expectReview(page);
   // Repair already swapped the confident misread (a 3 read as 4) to the runner-up.
   expect(await readGrid(page)).toEqual(want);
-  const changed = page.locator(".cell.changed");
+  const changed = page.locator(".workspace .cell.changed");
   await expect(changed).toHaveCount(1);
   await expect(page.getByTestId("repairs")).toContainText("changed 1 cell");
 
   await changed.click();
   await page.getByRole("button", { name: /Undo this cell \(was 4\)/ }).click();
-  await expect(page.locator(".cell.changed")).toHaveCount(0);
-  await expect(page.locator(".cell.conflict").first()).toBeVisible(); // the misread repeats a 4
+  await expect(page.locator(".workspace .cell.changed")).toHaveCount(0);
+  await expect(page.locator(".workspace .cell.conflict").first()).toBeVisible(); // the misread repeats a 4
   await page.getByRole("button", { name: "Solve puzzle" }).click();
   await expect(page.getByTestId("message")).toContainText("repeated digit");
 
@@ -157,7 +159,7 @@ test("a scan too wrong to review asks for another photo, with review anyway", as
 
   await page.getByRole("button", { name: "Review anyway" }).click();
   await expect(page.getByTestId("title")).toHaveText("Review the recognized puzzle");
-  expect(await page.locator(".cell.conflict").count()).toBeGreaterThanOrEqual(8);
+  expect(await page.locator(".workspace .cell.conflict").count()).toBeGreaterThanOrEqual(8);
 });
 
 test("enter manually from the error screen", async ({ page }) => {

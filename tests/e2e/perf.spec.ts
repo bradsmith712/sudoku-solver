@@ -10,9 +10,12 @@
  * Gating: locally and in `npm run test:live`, warm and cold-via-Upload scans at 4x
  * must beat BUDGET_MS. GitHub runners are several times slower than the machine the
  * 4x stand-in was chosen on, so in CI the numbers go to the job summary and the test
- * fails only if the cold-via-Upload scan exceeds CI_COLD_LIMIT_MS or is more than
- * CI_MAX_REGRESSION times the previous successful run's (PERF_BASELINE, restored
- * by actions/cache in the workflows).
+ * fails only if the cold-via-Upload scan exceeds CI_COLD_LIMIT_MS or regresses more
+ * than CI_MAX_REGRESSION times against the previous successful run (PERF_BASELINE,
+ * restored by actions/cache in the workflows). The regression check compares cold
+ * via Upload over the best warm scan of the same run, not raw milliseconds: runners
+ * differ about 2x in speed from run to run (2611 vs 5429 ms on the same commit),
+ * while that ratio stayed within 1.87-2.08.
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -32,6 +35,11 @@ function summary(markdown: string): void {
 }
 
 type Run = { toReview: number; stages: Record<string, number> };
+type Report = { coldViaButton: Run; warm: Run[] };
+
+/** Cold via Upload over the best warm scan: the runner's speed cancels out. */
+const coldPerWarm = (r: Report) =>
+  r.coldViaButton.toReview / Math.min(...r.warm.map((w) => w.toReview));
 
 /**
  * One scan; time runs from the file reaching the app to the review screen. With
@@ -105,19 +113,23 @@ for (const rate of [1, 4]) {
     const baselineFile = process.env.PERF_BASELINE;
     const previous =
       rate === 4 && baselineFile && existsSync(baselineFile)
-        ? (JSON.parse(readFileSync(baselineFile, "utf8")) as { coldViaButton: Run }).coldViaButton
+        ? (JSON.parse(readFileSync(baselineFile, "utf8")) as Report)
         : undefined;
+    const ratio = coldPerWarm(report);
+    const previousText = previous
+      ? `${previous.coldViaButton.toReview} ms, ${coldPerWarm(previous).toFixed(2)}x warm`
+      : "none";
     summary(
       `### Scan timing, ${rate}x CPU throttling (informational)\n\n` +
         `| cold | cold via Upload | warm | previous cold via Upload |\n|---|---|---|---|\n` +
-        `| ${cold.toReview} ms | ${coldViaButton.toReview} ms | ${warm.map((w) => w.toReview).join(" / ")} ms | ` +
-        `${previous ? `${previous.toReview} ms` : "none"} |\n`,
+        `| ${cold.toReview} ms | ${coldViaButton.toReview} ms (${ratio.toFixed(2)}x warm) | ` +
+        `${warm.map((w) => w.toReview).join(" / ")} ms | ${previousText} |\n`,
     );
     if (CI) {
       // Readable as a check-run annotation without log access.
       console.log(
-        `::notice title=perf ${rate}x::cold ${cold.toReview} ms, cold via Upload ${coldViaButton.toReview} ms, ` +
-          `warm ${warm.map((w) => w.toReview).join(" / ")} ms, previous ${previous?.toReview ?? "none"}`,
+        `::notice title=perf ${rate}x::cold ${cold.toReview} ms, cold via Upload ${coldViaButton.toReview} ms ` +
+          `(${ratio.toFixed(2)}x warm), warm ${warm.map((w) => w.toReview).join(" / ")} ms, previous ${previousText}`,
       );
     }
     if (rate !== 4) return;
@@ -129,9 +141,9 @@ for (const rate of [1, 4]) {
     expect(coldViaButton.toReview, "CI cold scan limit").toBeLessThan(CI_COLD_LIMIT_MS);
     if (previous) {
       expect(
-        coldViaButton.toReview,
-        `CI cold scan regression vs previous run (${previous.toReview} ms)`,
-      ).toBeLessThanOrEqual(previous.toReview * CI_MAX_REGRESSION);
+        ratio,
+        `CI cold scan regression: cold via Upload / best warm vs previous run (${previousText})`,
+      ).toBeLessThanOrEqual(coldPerWarm(previous) * CI_MAX_REGRESSION);
     }
   });
 }

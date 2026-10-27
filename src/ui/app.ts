@@ -224,6 +224,11 @@ export function mountApp(root: HTMLElement): void {
   const cameraInput = createPhotoInput(true, startScan);
   const uploadInput = createPhotoInput(false, startScan);
   root.append(cameraInput, uploadInput);
+  for (const input of [cameraInput, uploadInput]) {
+    input.addEventListener("cancel", () => {
+      if (screen === "home") hero.start();
+    });
+  }
 
   function setMessage(text: string, kind: "" | "error" | "success" | "warning" | "hint" = "") {
     message.textContent = text;
@@ -341,6 +346,8 @@ export function mountApp(root: HTMLElement): void {
       showError("offline");
       return;
     }
+    // Free the main thread for loading the vision code while the user picks a photo.
+    hero.stop();
     preloadScanner();
     (camera ? cameraInput : uploadInput).click();
   }

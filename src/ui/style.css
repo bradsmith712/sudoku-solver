@@ -344,10 +344,10 @@ button.primary {
 
 /* ---- home (docs/mockups-home.png) ---- */
 
+/* Phone sizes keep all three buttons above the fold at 390x844, with room for wider fonts. */
 .home {
   display: grid;
-  gap: 16px;
-  padding-top: 4px;
+  gap: 12px;
 }
 
 .home h1 {
@@ -365,7 +365,7 @@ button.primary {
 }
 
 .home-copy p {
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   color: #4b5563;
   font-size: 1rem;
   line-height: 1.5;
@@ -381,7 +381,7 @@ button.primary {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  min-height: 56px;
+  min-height: 52px;
   border-radius: 12px;
   font-size: 1.05rem;
 }
@@ -403,7 +403,7 @@ button.primary {
   position: relative;
   display: grid;
   place-items: center;
-  padding: 18px 0;
+  padding: 10px 0;
   border-radius: 16px;
   background: #eef4ff;
   perspective: 900px;
@@ -423,7 +423,7 @@ button.primary {
 }
 
 .hero .board {
-  width: 280px;
+  width: 264px;
   max-width: 100%;
   border-radius: 2px;
   transition:
@@ -464,7 +464,7 @@ button.primary {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   padding: 0;
   list-style: none;
   text-align: center;

@@ -8,6 +8,7 @@ import {
   generateSteps,
   type Step,
   type Technique,
+  type Unit,
 } from "./steps";
 
 type Fixture = { name: string; category: string; expected: string; grid: Grid; solution?: Grid };
@@ -474,6 +475,58 @@ describe("candidatesAt", () => {
         );
         ck.apply(s);
       });
+    }
+  });
+});
+
+describe("conclusion and reasons", () => {
+  const all = solvable.concat(real).flatMap((p) => generateSteps(p.grid));
+  const unitWord = (u: Unit) =>
+    `${{ row: "row", col: "column", box: "box" }[u.kind]} ${u.index + 1}`;
+  /** Digits in "... already contains 1, 3 and 5." / "... rules out 4 and 9." */
+  const listed = (reason: string) =>
+    (/(?:contains|rules out) (.+)\.$/.exec(reason)?.[1].match(/\d/g) ?? []).map(Number);
+
+  it("every step leads with a sentence and has at least one reason", () => {
+    for (const s of all) {
+      expect(s.conclusion, s.explanation).toMatch(/^\S.*\.$/);
+      expect(s.reasons.length, s.explanation).toBeGreaterThan(0);
+      for (const r of s.reasons) expect(r, s.explanation).toMatch(/^[A-Z].*\.$/);
+    }
+  });
+
+  it("a naked single's reasons rule out exactly the other eight digits", () => {
+    for (const s of all.filter((x) => x.technique === "naked-single")) {
+      const d = s.placements[0].digit;
+      expect(s.conclusion).toBe(`Only ${d} can go here.`);
+      // Digits ruled out by earlier steps are listed too ("Earlier steps ruled out 4.").
+      const out = s.reasons.flatMap((r) =>
+        r.startsWith("Earlier steps ruled out ") ? (r.match(/\d/g) ?? []).map(Number) : listed(r),
+      );
+      expect(new Set(out).size, s.explanation).toBe(out.length);
+      expect([...out].sort(), s.explanation).toEqual(
+        [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((x) => x !== d),
+      );
+    }
+  });
+
+  it("a hidden single's first reason names its unit and digit", () => {
+    for (const s of all.filter((x) => x.technique === "hidden-single")) {
+      const d = s.placements[0].digit;
+      expect(s.conclusion).toBe(`${d} has to go here.`);
+      expect(s.reasons[0]).toBe(
+        `In ${unitWord(s.highlight.units[0])}, ${d} can only go in this cell.`,
+      );
+    }
+  });
+
+  it("an elimination step concludes with what it removes", () => {
+    for (const s of all.filter((x) => !x.placements.length)) {
+      expect(s.conclusion).toMatch(/^Remove /);
+      // The same list of removals the explanation ends with.
+      expect(s.explanation.endsWith(s.conclusion.replace(/^[^:]*/, "")), s.explanation).toBe(true);
+      for (const e of s.eliminations)
+        for (const d of e.digits) expect(s.conclusion, s.explanation).toContain(String(d));
     }
   });
 });

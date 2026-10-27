@@ -182,6 +182,10 @@ Done when: the public HTTPS URL works on a phone and can be installed to the hom
 - [x] Landing page with a single-column mobile hero, prominent Scan button and Sudoku preview
   - Home screen per `docs/mockups-home.png` (`src/ui/hero.ts`): one animated example board at every breakpoint (paper photo, flatten, fill in solving order, highlight a step; static under reduced motion, paused when hidden or off the home screen), Scan / Upload / Or enter manually; text left and board right from 1024px. Back button in the top bar elsewhere; Solve another returns home. Rebranded to sudokulens.
   - Entry chunk 12.52 -> 13.76 KB gzip JS, CSS 2.60 -> 3.42 KB gzip.
+- [x] Solving steps redesign per `docs/mockups-steps.png`
+  - `Step` gains `conclusion` and `reasons` (built from the same pieces as `explanation`, which is unchanged byte for byte on all fixtures); the card leads with the conclusion, then bullets and crossed-out candidates. Board capped at 348px on phones; green target, blue units, red cells losing candidates.
+  - Sticky footer with progress bar and percent; step list as a bottom sheet under 1024px (technique tag, short coordinates such as R1C2 = 7), inline beside the card from 1024px.
+  - Entry chunk 13.76 -> 15.23 KB gzip JS, CSS 3.42 -> 4.19 KB gzip.
 - [ ] Optional Claude vision fallback via a rate-limited proxy, compared against the local pipeline in the README
 
 ## Intervention log (fill in as you go)

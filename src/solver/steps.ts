@@ -44,7 +44,14 @@ export type Step = {
   /** The target or pattern cells, and the units the move is about. */
   highlight: { cells: Cell[]; units: Unit[] };
   explanation: string;
+  /** The outcome first, for the explanation card: "Only 7 can go here." */
+  conclusion: string;
+  /** The reasoning behind it, one short sentence per bullet. */
+  reasons: string[];
 };
+
+/** The three ways a step is described; built from the same pieces so they agree. */
+type Say = Pick<Step, "explanation" | "conclusion" | "reasons">;
 
 export const TECHNIQUE_LABEL: Record<Technique, string> = {
   "naked-single": "Naked single",
@@ -193,20 +200,14 @@ class Board {
   }
 }
 
-function place(
-  technique: Technique,
-  i: number,
-  d: number,
-  units: number[],
-  explanation: string,
-): Step {
+function place(technique: Technique, i: number, d: number, units: number[], say: Say): Step {
   return {
     technique,
     title: TECHNIQUE_LABEL[technique],
     placements: [{ ...toCell(i), digit: d }],
     eliminations: [],
     highlight: { cells: [toCell(i)], units: units.map(toUnit) },
-    explanation,
+    ...say,
   };
 }
 
@@ -215,24 +216,33 @@ function nakedSingle(b: Board): Step | null {
     if (b.values[i] || popcount(b.cands[i]) !== 1) continue;
     const d = digitsOf(b.cands[i])[0];
     const clauses: string[] = [];
+    const reasons: string[] = [];
     let covered = 0;
     for (const u of unitsOf(i)) {
       const adds = b.placed(u) & ~covered;
       covered |= adds;
       if (!adds) continue;
+      const digits = list(digitsOf(adds));
       clauses.push(
         clauses.length
-          ? `${unitName(u)} adds ${list(digitsOf(adds))}`
-          : `${capitalize(unitName(u))} already contains ${list(digitsOf(adds))}`,
+          ? `${unitName(u)} adds ${digits}`
+          : `${capitalize(unitName(u))} already contains ${digits}`,
+      );
+      reasons.push(
+        `${capitalize(unitName(u))} ${reasons.length ? "rules out" : "already contains"} ${digits}.`,
       );
     }
     const ruled = b.removed[i] & ~covered & ~bit(d);
     if (ruled) {
       const clause = `earlier steps ruled out ${list(digitsOf(ruled))}`;
       clauses.push(clauses.length ? clause : capitalize(clause));
+      reasons.push(`${capitalize(clause)}.`);
     }
-    const text = `${clauses.join("; ")}, so this cell can only be ${d}.`;
-    return place("naked-single", i, d, unitsOf(i), text);
+    return place("naked-single", i, d, unitsOf(i), {
+      explanation: `${clauses.join("; ")}, so this cell can only be ${d}.`,
+      conclusion: `Only ${d} can go here.`,
+      reasons,
+    });
   }
   return null;
 }
@@ -265,19 +275,28 @@ function hiddenSingle(b: Board): Step | null {
         if (byElimination) parts.push(`had ${d} ruled out by an earlier step`);
         why = `the other empty cells ${parts.join(" or ")}.`;
       }
-      return place("hidden-single", i, d, [u], `In ${name}, ${d} can only go in this cell: ${why}`);
+      const where = `In ${name}, ${d} can only go in this cell`;
+      return place("hidden-single", i, d, [u], {
+        explanation: `${where}: ${why}`,
+        conclusion: `${d} has to go here.`,
+        reasons: [`${where}.`, capitalize(why)],
+      });
     }
   }
   return null;
 }
 
+/**
+ * Elimination steps read "<why>, so <so>. <remove>"; the card leads with <lead>
+ * (default <remove>) and lists <why> and <so> as the reasons.
+ */
 function eliminationStep(
   technique: Technique,
   title: string,
   pattern: number[],
   units: number[],
   elims: Elimination[],
-  explanation: string,
+  [why, so, remove, lead = remove]: [string, string, string, string?],
 ): Step {
   return {
     technique,
@@ -285,7 +304,9 @@ function eliminationStep(
     placements: [],
     eliminations: elims,
     highlight: { cells: pattern.map(toCell), units: units.map(toUnit) },
-    explanation,
+    explanation: `${why}, so ${so}. ${remove}`,
+    conclusion: lead,
+    reasons: [`${why}.`, `So ${so}.`],
   };
 }
 
@@ -313,11 +334,11 @@ function pointing(b: Board): Step | null {
         );
         if (!elims.length) continue;
         const title = spots.length === 2 ? "Pointing pair" : "Pointing triple";
-        const text =
-          `In box ${box + 1}, ${d} can only go in ${unitName(lineUnit)} ` +
-          `(${along(lineUnit, spots)}), so the ${d} in ${unitName(lineUnit)} must be inside box ${box + 1}. ` +
-          `Remove ${d} from the rest of ${unitName(lineUnit)}: ${along(lineUnit, elims.map(index))}.`;
-        return eliminationStep("pointing", title, spots, [u, lineUnit], elims, text);
+        return eliminationStep("pointing", title, spots, [u, lineUnit], elims, [
+          `In box ${box + 1}, ${d} can only go in ${unitName(lineUnit)} (${along(lineUnit, spots)})`,
+          `the ${d} in ${unitName(lineUnit)} must be inside box ${box + 1}`,
+          `Remove ${d} from the rest of ${unitName(lineUnit)}: ${along(lineUnit, elims.map(index))}.`,
+        ]);
       }
     }
   }
@@ -337,18 +358,11 @@ function claiming(b: Board): Step | null {
         bit(d),
       );
       if (!elims.length) continue;
-      const text =
-        `In ${unitName(u)}, ${d} can only go inside box ${box + 1} ` +
-        `(${along(u, spots)}), so the ${d} in box ${box + 1} must be in ${unitName(u)}. ` +
-        `Remove ${d} from the rest of box ${box + 1}: ${cellList(elims.map(index))}.`;
-      return eliminationStep(
-        "claiming",
-        TECHNIQUE_LABEL.claiming,
-        spots,
-        [u, 18 + box],
-        elims,
-        text,
-      );
+      return eliminationStep("claiming", TECHNIQUE_LABEL.claiming, spots, [u, 18 + box], elims, [
+        `In ${unitName(u)}, ${d} can only go inside box ${box + 1} (${along(u, spots)})`,
+        `the ${d} in box ${box + 1} must be in ${unitName(u)}`,
+        `Remove ${d} from the rest of box ${box + 1}: ${cellList(elims.map(index))}.`,
+      ]);
     }
   }
   return null;
@@ -369,18 +383,11 @@ function nakedPair(b: Board): Step | null {
         );
         if (!elims.length) continue;
         const [p, q] = digitsOf(mask);
-        const text =
-          `${capitalize(cellList([i, j]))} can each only be ${p} or ${q}, ` +
-          `so in ${unitName(u)} those two cells take ${p} and ${q} between them. ` +
-          `Remove ${p} and ${q} from the other cells of ${unitName(u)}: ${describeEliminations(elims)}.`;
-        return eliminationStep(
-          "naked-pair",
-          TECHNIQUE_LABEL["naked-pair"],
-          [i, j],
-          [u],
-          elims,
-          text,
-        );
+        return eliminationStep("naked-pair", TECHNIQUE_LABEL["naked-pair"], [i, j], [u], elims, [
+          `${capitalize(cellList([i, j]))} can each only be ${p} or ${q}`,
+          `in ${unitName(u)} those two cells take ${p} and ${q} between them`,
+          `Remove ${p} and ${q} from the other cells of ${unitName(u)}: ${describeEliminations(elims)}.`,
+        ]);
       }
     }
   }
@@ -401,11 +408,13 @@ function hiddenPair(b: Board): Step | null {
         const keep = bit(p) | bit(q);
         const elims = removals(b, sp, ALL & ~keep);
         if (!elims.length) continue;
-        const text =
-          `In ${unitName(u)}, ${p} and ${q} can only go in ${cellList(sp)}, ` +
-          `so those two cells must hold ${p} and ${q}. ` +
-          `Remove their other candidates: ${describeEliminations(elims)}.`;
-        return eliminationStep("hidden-pair", TECHNIQUE_LABEL["hidden-pair"], sp, [u], elims, text);
+        return eliminationStep("hidden-pair", TECHNIQUE_LABEL["hidden-pair"], sp, [u], elims, [
+          `In ${unitName(u)}, ${p} and ${q} can only go in ${cellList(sp)}`,
+          `those two cells must hold ${p} and ${q}`,
+          `Remove their other candidates: ${describeEliminations(elims)}.`,
+          // Read first, "their" would point nowhere.
+          `Remove the other candidates: ${describeEliminations(elims)}.`,
+        ]);
       }
     }
   }
@@ -418,7 +427,11 @@ function fallback(b: Board, solution: number[]): Step {
     if (b.values[i]) continue;
     if (best === -1 || popcount(b.cands[i]) < popcount(b.cands[best])) best = i;
   }
-  return place("fallback", best, solution[best], [], FALLBACK_EXPLANATION);
+  return place("fallback", best, solution[best], [], {
+    explanation: FALLBACK_EXPLANATION,
+    conclusion: `${solution[best]} goes here.`,
+    reasons: [FALLBACK_EXPLANATION],
+  });
 }
 
 const LADDER = [nakedSingle, hiddenSingle, pointing, claiming, nakedPair, hiddenPair];

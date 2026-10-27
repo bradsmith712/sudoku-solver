@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import { generateSteps } from "../../src/solver/steps";
+import { generateSteps, type Step } from "../../src/solver/steps";
 
 type Fixture = { grid: number[][]; solution: number[][] };
 const fixture = (name: string): Fixture =>
@@ -13,6 +13,27 @@ const M = EASY_STEPS.length;
 const mainCell = (page: Page, i: number) => page.locator(".workspace .cell").nth(i);
 const stepCells = (page: Page) => page.locator(".steps .cell");
 const count = (page: Page) => page.getByTestId("step-count");
+const log = (page: Page) => page.getByTestId("step-log");
+const allSteps = (page: Page) => page.getByRole("button", { name: /^All steps/ });
+
+/** Open the step list if it is a sheet (under 1024px); from 1024px it is always shown. */
+async function openList(page: Page) {
+  if (await allSteps(page).isVisible()) await allSteps(page).click();
+  await expect(log(page)).toBeVisible();
+}
+
+/** Jump to step `k + 1` from the step list. */
+async function jump(page: Page, k: number | "last") {
+  await openList(page);
+  const rows = log(page).getByRole("button");
+  await (k === "last" ? rows.last() : rows.nth(k)).click();
+}
+
+/** The card leads with the step's conclusion, then lists its reasons. */
+async function expectCard(page: Page, step: Step) {
+  await expect(page.getByTestId("step-conclusion")).toHaveText(step.conclusion);
+  await expect(page.getByTestId("step-reasons").getByRole("listitem")).toHaveText(step.reasons);
+}
 
 async function enter(page: Page, grid: number[][]) {
   for (let i = 0; i < 81; i++) {
@@ -48,12 +69,18 @@ test("step through a solved puzzle, jump from the log, and end on the solution",
 }) => {
   await solveAndOpenSteps(page, EASY.grid);
 
-  // Step 1: the explanation from the engine, announced politely, target highlighted.
+  // Step 1: the conclusion and reasons from the engine, announced politely, target highlighted.
   await expect(count(page)).toHaveText(`Step 1 of ${M}`);
-  const explanation = page.getByTestId("step-explanation");
-  await expect(explanation).toHaveAttribute("aria-live", "polite");
-  await expect(explanation).toHaveText(EASY_STEPS[0].explanation);
+  await expect(page.getByTestId("step-pct")).toHaveText(`${Math.round(100 / M)}% complete`);
+  await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1");
+  await expect(page.getByTestId("step-explanation")).toHaveAttribute("aria-live", "polite");
+  await expectCard(page, EASY_STEPS[0]);
   const p1 = EASY_STEPS[0].placements[0];
+  await expect(page.getByTestId("step-where")).toHaveText(
+    `Row ${p1.row + 1}, Column ${p1.col + 1}`,
+  );
+  const answer = page.getByTestId("step-candidates").getByRole("listitem", { name: /answer/ });
+  await expect(answer).toHaveText(String(p1.digit));
   const target = stepCells(page).nth(p1.row * 9 + p1.col);
   await expect(target).toHaveText(String(p1.digit));
   await expect(target).toHaveClass(/focus/);
@@ -63,7 +90,7 @@ test("step through a solved puzzle, jump from the log, and end on the solution",
   // Next / Previous and the arrow keys.
   await page.getByRole("button", { name: "Next step" }).click();
   await expect(count(page)).toHaveText(`Step 2 of ${M}`);
-  await expect(explanation).toHaveText(EASY_STEPS[1].explanation);
+  await expectCard(page, EASY_STEPS[1]);
   await page.getByRole("button", { name: "Previous" }).click();
   await expect(count(page)).toHaveText(`Step 1 of ${M}`);
   await page.keyboard.press("ArrowRight");
@@ -72,18 +99,19 @@ test("step through a solved puzzle, jump from the log, and end on the solution",
   await page.keyboard.press("ArrowLeft");
   await expect(count(page)).toHaveText(`Step 2 of ${M}`);
 
-  // Jump from the activity log to a middle step: the board shows exactly that many placements.
-  const log = page.getByTestId("step-log");
-  await log.getByRole("button").nth(9).click();
+  // Jump from the step list to a middle step: the board shows exactly that many placements.
+  await jump(page, 9);
   await expect(count(page)).toHaveText(`Step 10 of ${M}`);
-  await expect(log.getByRole("button").nth(9)).toHaveAttribute("aria-current", "step");
+  await expect(page.getByTestId("step-pct")).toHaveText(`${Math.round(1000 / M)}% complete`);
+  await expect(log(page).getByRole("button").nth(9)).toHaveAttribute("aria-current", "step");
   const givens = EASY.grid.flat().filter(Boolean).length;
   const filled = (await readSteps(page)).flat().filter(Boolean).length;
   expect(filled).toBe(givens + 10);
 
   // Jump to the last step: the board is the solution.
-  await log.getByRole("button").last().click();
+  await jump(page, "last");
   await expect(count(page)).toHaveText(`Step ${M} of ${M}`);
+  await expect(page.getByTestId("step-pct")).toHaveText("100% complete");
   expect(await readSteps(page)).toEqual(EASY.solution);
 
   // Next on the last step goes back to the Solved screen.
@@ -112,14 +140,76 @@ test("trial-and-error steps are labelled as such", async ({ page }) => {
   const k = steps.findIndex((s) => s.technique === "fallback");
   expect(k).toBeGreaterThanOrEqual(0);
   await solveAndOpenSteps(page, hard.grid);
-  await page.getByTestId("step-log").getByRole("button").nth(k).click();
+  await jump(page, k);
   await expect(page.getByTestId("step-badge")).toHaveText("Trial and error");
-  await expect(page.getByTestId("step-explanation")).toHaveText(
+  await expect(page.getByTestId("step-reasons")).toHaveText(
     "No simple pattern applies here; this digit comes from trial and error.",
   );
+  await expectCard(page, steps[k]);
+  await expect(log(page).getByRole("button").nth(k).locator(".tag")).toHaveText("Trial");
   await page.keyboard.press("End");
   await expect(count(page)).toHaveText(`Step ${steps.length} of ${steps.length}`);
   expect(await readSteps(page)).toEqual(hard.solution);
+});
+
+test("elimination steps lead with what they remove and mark the cells losing candidates", async ({
+  page,
+}) => {
+  const hard = fixture("hard-01");
+  const steps = generateSteps(hard.grid);
+  const k = steps.findIndex((s) => s.technique === "pointing");
+  expect(k).toBeGreaterThanOrEqual(0);
+  await solveAndOpenSteps(page, hard.grid);
+  await jump(page, k);
+  await expectCard(page, steps[k]);
+  await expect(page.getByTestId("step-candidates")).toBeHidden();
+  for (const e of steps[k].eliminations)
+    await expect(stepCells(page).nth(e.row * 9 + e.col)).toHaveClass(/elim/);
+  await expect(log(page).getByRole("button").nth(k)).toContainText("remove");
+});
+
+test("the step list is a bottom sheet on a phone", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await solveAndOpenSteps(page, EASY.grid);
+  const sheet = page.getByRole("dialog", { name: `All steps (${M})` });
+  await expect(sheet).toBeHidden();
+
+  // Opens on the current step; Escape closes it and gives focus back.
+  await allSteps(page).click();
+  await expect(sheet).toBeVisible();
+  await expect(sheet).toHaveAttribute("aria-modal", "true");
+  await expect(log(page).getByRole("button").first()).toBeFocused();
+  await expect(page.getByRole("navigation", { name: "Step controls" })).toHaveJSProperty(
+    "inert",
+    true,
+  );
+  // Arrow keys move through the list, not the steps.
+  await page.keyboard.press("ArrowDown");
+  await expect(log(page).getByRole("button").nth(1)).toBeFocused();
+  await expect(count(page)).toHaveText(`Step 1 of ${M}`);
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+  await expect(allSteps(page)).toBeFocused();
+  await expect(page.getByRole("navigation", { name: "Step controls" })).toHaveJSProperty(
+    "inert",
+    false,
+  );
+
+  // The close button and the backdrop close it too.
+  await allSteps(page).click();
+  await page.getByRole("button", { name: "Close step list" }).click();
+  await expect(sheet).toBeHidden();
+  await allSteps(page).click();
+  await page.getByTestId("sheet-backdrop").click({ position: { x: 20, y: 20 } });
+  await expect(sheet).toBeHidden();
+
+  // Picking a step jumps to it and closes the sheet; reopening centres that step.
+  await jump(page, 4);
+  await expect(count(page)).toHaveText(`Step 5 of ${M}`);
+  await expect(sheet).toBeHidden();
+  await allSteps(page).click();
+  await expect(log(page).getByRole("button").nth(4)).toBeFocused();
+  await expect(log(page).getByRole("button").nth(4)).toHaveAttribute("aria-current", "step");
 });
 
 test("Hint shows the next step for the current board without filling it in", async ({ page }) => {
@@ -172,7 +262,7 @@ for (const vp of VIEWPORTS) {
     await page.getByRole("button", { name: "Solve", exact: true }).click();
     await page.screenshot({ path: info.outputPath(`solved-${vp.width}.png`), fullPage: true });
     await page.getByRole("button", { name: "View solving steps" }).click();
-    await page.getByTestId("step-log").getByRole("button").nth(11).click();
+    await jump(page, 11);
     // Let the highlight fade finish so the screenshot shows step 12, not a blend.
     await page.waitForFunction(() => document.getAnimations().length === 0);
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -192,15 +282,20 @@ for (const vp of VIEWPORTS) {
       expect(box.y + box.height).toBeLessThanOrEqual(vp.height + 1);
       expect(box.y).toBeGreaterThanOrEqual(0);
     }
-    // The log scrolls inside itself and keeps the current step in view.
-    const log = page.getByTestId("step-log");
-    expect(await log.evaluate((e) => e.scrollHeight > e.clientHeight)).toBe(true);
-    const inView = await log.evaluate((ol) => {
+    // The step list scrolls inside itself and keeps the current step in view.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await openList(page);
+    await page.waitForFunction(() => document.getAnimations().length === 0);
+    if (vp.name !== "desktop")
+      await page.screenshot({ path: info.outputPath(`steps-${vp.width}-sheet.png`) });
+    expect(await log(page).evaluate((e) => e.scrollHeight > e.clientHeight)).toBe(true);
+    const inView = await log(page).evaluate((ol) => {
       const cur = ol.querySelector("[aria-current=step]") as HTMLElement;
       const [a, b] = [ol.getBoundingClientRect(), cur.getBoundingClientRect()];
       return b.top >= a.top && b.bottom <= a.bottom;
     });
     expect(inView).toBe(true);
+    if (vp.name !== "desktop") await page.keyboard.press("Escape");
 
     const board = (await page.locator(".steps .board").boundingBox())!;
     const card = (await page.locator(".step-card").boundingBox())!;

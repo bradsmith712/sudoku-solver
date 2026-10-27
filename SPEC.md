@@ -1,4 +1,4 @@
-# SPEC: Sudoku Photo Solver
+# SPEC: sudokulens (Sudoku Photo Solver)
 
 ## Goal
 

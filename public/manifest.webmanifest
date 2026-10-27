@@ -1,6 +1,6 @@
 {
-  "name": "Sudoku Photo Solver",
-  "short_name": "Sudoku",
+  "name": "sudokulens",
+  "short_name": "sudokulens",
   "description": "Photograph a sudoku, check the digits, and solve it. Runs entirely on your device.",
   "id": "./",
   "start_url": "./",

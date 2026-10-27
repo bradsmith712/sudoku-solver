@@ -1,4 +1,4 @@
-# Sudoku Photo Solver
+# sudokulens (Sudoku Photo Solver)
 
 Client-side web app: photo of a sudoku in, solved grid out. Full requirements are in `SPEC.md`. Work items are in `TASKS.md`.
 

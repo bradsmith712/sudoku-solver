@@ -49,6 +49,11 @@ const REVIEW_HINTS: Record<Exclude<SolveStatus, "solved">, string> = {
     "These digits allow more than one solution, so a digit may be missing. Compare the grid with your puzzle.",
 };
 
+/** The brand mark: a 3x3 grid of rounded squares, as in the app icon. */
+const LOGO = `<svg class="logo" viewBox="0 0 20 20" aria-hidden="true">${[0, 7, 14]
+  .flatMap((y) => [0, 7, 14].map((x) => `<rect x="${x}" y="${y}" width="6" height="6" rx="1.5"/>`))
+  .join("")}</svg>`;
+
 type ErrorKind = "no-board" | "unreadable" | "failed" | "offline";
 
 const ERROR_TEXT: Record<ErrorKind, string> = {
@@ -98,7 +103,9 @@ export function mountApp(root: HTMLElement): void {
   let assets: AssetsStatus = "unknown";
 
   root.innerHTML = `
-    <header class="topbar"><span class="brand">Sudoku Solver</span></header>
+    <header class="topbar">
+      <span class="brand" role="img" aria-label="sudokulens">${LOGO}<span>sudoku</span><span class="lens">lens.</span></span>
+    </header>
     <main class="app">
       <div class="intro">
         <h1 data-testid="title"></h1>

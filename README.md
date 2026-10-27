@@ -1,4 +1,4 @@
-# Sudoku Photo Solver
+# sudokulens (Sudoku Photo Solver)
 
 Point your phone at a printed sudoku and get the solved grid. Everything runs in your browser: there's no server, no account, no API key, and nothing to pay per scan. You can install it to your home screen as an app, and it works offline.
 
